@@ -27,14 +27,15 @@ test('UTP count boundaries and unsupported standards reject invalid simultaneous
   assert.equal(S.parallel(s.standards[0],{}).perCableFactor,1);
   const restored=JSON.parse(JSON.stringify(s));assert.equal(E.calculate(restored).total,550000);
 });
-test('UTP Excel carries total cable length, route length and simultaneous factor',async()=>{
-  global.JSZip=require('../vendor/jszip.min.js');
+test('UTP Excel carries total cable length, route length and simultaneous factor',()=>{
+  const D=require('../src/design-xlsx.js');
   const s=utpFixture();s.quantities[0].length=100;s.quantities[0].parallelQuantityMode='route';
-  const r=E.calculate(s),zip=await JSZip.loadAsync(await (await ExcelIO.writeEstimate(s,r)).arrayBuffer());
-  const rates=await zip.file('xl/worksheets/sheet3.xml').async('string');
-  assert.match(rates,/<c r="R2"><v>4<\/v>/);assert.match(rates,/<c r="S2"><v>100<\/v>/);assert.match(rates,/<c r="T2"><v>3.4<\/v>/);
-  assert.match(await zip.file('xl/worksheets/sheet2.xml').async('string'),/<c r="E2"><v>400<\/v>/);
-  assert.match(await zip.file('xl/worksheets/sheet4.xml').async('string'),/<c r="D2"><v>400<\/v>/);
+  const r=E.calculate(s),sheets=D.build(s,r).sheets,cell=(n,ref)=>sheets.find(x=>x.name===n).cells.get(ref);
+  assert.equal(cell('물량산출근거','C4').value,400);assert.match(cell('물량산출근거','F4').value,/4열 동시포설 · 1열 경로 100m/);
+  assert.equal(cell('일위대가표','C6').formula,'물량산출근거!C4');
+  // 4열 동시포설: 총길이 기준 계수 0.85가 품셈에 반영
+  const k=sheets.find(x=>x.name==='일위대가표');const perUnit=[...k.cells.entries()].find(([ref,c])=>/^[A-Z]+6$/.test(ref)&&/^0\.15\*0\.85$/.test(c.formula||''));
+  assert.ok(perUnit);assert.match(cell('일위대가표',[...k.cells.keys()].filter(x=>/6$/.test(x)).pop()).value,/해설 ⑧/);
 });
 test('all fourteen common sections plus wage and material are reachable with unique option IDs',()=>{
   for(let n=1;n<=14;n++)assert.ok(S.groups.some(g=>g.code===`1-2-2-${n}`));
@@ -88,12 +89,16 @@ test('fixed rates, additive basic amount, dependent totals and blank exclusions'
   s.rates[0].rate=null;assert.match(E.calculate(s).errors.join(),/요율/);
   s.rates[0].rate=0;s.rates[1].fixedAmount=null;assert.match(E.calculate(s).errors.join(),/직접 산정금액/);
 });
-test('Excel shows separate labor and wage factors and matches the calculation',async()=>{
-  global.JSZip=require('../vendor/jszip.min.js');
+test('Excel folds the wage premium into man-days so trade totals match the calculation',()=>{
+  const D=require('../src/design-xlsx.js');
   const s=fixture(),r=selection(s,[{id:'night'},{id:'height_no',value:3}]);
-  const zip=await JSZip.loadAsync(await (await ExcelIO.writeEstimate(s,r)).arrayBuffer());
-  const sheet=await zip.file('xl/worksheets/sheet3.xml').async('string');
-  assert.match(sheet,/<c r="M2"><v>1.35<\/v>/);assert.match(sheet,/<c r="N2"><v>1.5<\/v>/);assert.match(sheet,/<c r="O2"><v>150000<\/v>/);
-  assert.match(await zip.file('xl/worksheets/sheet1.xml').async('string'),/<v>203500<\/v>/);
-  await assert.rejects(ExcelIO.write({},s,r),/행별 노임 할증/);
+  const sheets=D.build(s,r).sheets,cell=(n,ref)=>sheets.find(x=>x.name===n).cells.get(ref);
+  const u=sheets.find(x=>x.name==='일위대가표');
+  const per=[...u.cells.entries()].find(([ref,c])=>/^[A-Z]+6$/.test(ref)&&c.formula==='1*'+String(Number((1.35*1.5).toPrecision(12))));
+  assert.ok(per,'품셈 = 기본품 × 품 계수 1.35 × 노임 계수 1.5');
+  const design=sheets.find(x=>x.name==='설계내역서');
+  const labor=[...design.cells.entries()].find(([,c])=>c.formula&&/^ROUNDDOWN\(C\d+\*G\d+,0\)$/.test(c.formula));
+  assert.equal(labor[1].value,r.directLabor);assert.equal(r.directLabor,202500);assert.equal(r.total,203500);
+  assert.equal(cell('원가계산서','D5').value,r.material);
+  assert.rejects(ExcelIO.write({},s,r),/행별 노임 할증/);
 });
