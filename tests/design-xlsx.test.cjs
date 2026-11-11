@@ -8,17 +8,27 @@ const view=(state)=>{const r=E.calculate(state);assert.deepEqual(r.errors,[]);co
 
 test('cost statement follows the sample layout and its cached values equal the app calculation',()=>{
   const {r,cell,sheet,summary}=view(fresh());
-  assert.equal(cell('원가계산서','C5').value,'직  접  재  료  비');assert.equal(cell('원가계산서','D5').formula,'집계표!E6');
-  assert.equal(cell('원가계산서','D7').formula,'집계표!G6');
-  assert.equal(cell('원가계산서','D8').formula,'ROUNDDOWN((D7)*17.5%,0)');assert.equal(cell('원가계산서','E8').value,'직접노무비 × 17.5%');
-  assert.equal(cell('원가계산서','E10').value,'(B) × 3.56%');                 // 산재: 노무비 소계
-  assert.equal(cell('원가계산서','E16').value,'(A + B) × 5%');             // 기타경비
+  const c=ref=>cell('원가계산서',ref);
+  assert.equal(c('E4').value,'구  성  비');
+  assert.equal(c('C5').value,'직 접 재 료 비(가)');assert.equal(c('D5').formula,'집계표!E6');
+  assert.equal(c('C6').value,'간 접 재 료 비');assert.equal(c('D6').value,null);           // 예시처럼 빈 간접재료비 행
+  assert.equal(c('C7').value,'소    계');assert.equal(c('D7').formula,'SUM(D5:D6)');
+  assert.equal(c('D8').formula,'집계표!G6');
+  assert.equal(c('C9').value,'간 접 노 무 비(나)');assert.equal(c('D9').formula,'ROUNDDOWN((D8)*17.5%,0)');assert.equal(c('E9').value,'직접노무비 * 17.5%');
+  assert.equal(c('E11').value,'(B) * 3.56%');                                      // 산재: 노무비 소계
+  assert.equal(c('D13').value,null);assert.match(c('F13').value,/^적용 제외/);       // 건강보험료 미적용
+  assert.equal(c('E17').value,'(A + B) * 5%');                                      // 기타경비
   const rows=[...sheet('원가계산서').cells.entries()];
-  const byLabel=l=>rows.find(([ref,c])=>/^A\d+$/.test(ref)&&String(c.value).replace(/\s/g,'').startsWith(l))[0].slice(1);
-  assert.equal(cell('원가계산서','D'+byLabel('합계')).value,r.total);
-  assert.equal(cell('원가계산서','D'+summary.contract).value,Math.floor(r.total/1000)*1000);
-  assert.equal(cell('원가계산서','E'+byLabel('이윤')).value,'(B + C + 일반관리비) × 6.2%');
-  for(const c of r.costs)assert.ok(rows.some(([ref,x])=>/^D/.test(ref)&&x.value===c.amount),c.id);
+  const rowOf=l=>rows.find(([ref,x])=>/^A\d+$/.test(ref)&&String(x.value).replace(/\s/g,'').startsWith(l))[0].slice(1);
+  assert.equal(c('E'+rowOf('일반관리비')).value,'(D) * 8%');
+  assert.equal(c('E'+rowOf('이윤')).value,'(B + C + E) * 6.2%');
+  assert.equal(c('E'+rowOf('총원가')).value,'(D) + (E) + (F)');
+  assert.equal(c('E'+rowOf('부가가치세')).value,'(G) * 10%');
+  assert.ok(!rows.some(([ref,x])=>/^A\d+$/.test(ref)&&String(x.value).replace(/\s/g,'')==='합계'));   // 별도 합계 행 없음
+  assert.equal(c('D'+summary.contract).value,Math.floor(r.total/1000)*1000);
+  assert.match(c('D'+summary.contract).formula,/^ROUNDDOWN\(D\d+\+D\d+,-3\)$/);
+  assert.match(c('F'+summary.contract).value,/7,832,704원/);
+  for(const x of r.costs.filter(x=>x.enabled))assert.ok(rows.some(([ref,y])=>/^D/.test(ref)&&y.value===x.amount),x.id);
   assert.equal(cell('설계내역서','F'+summary.grand).value,r.material);assert.equal(cell('설계내역서','H'+summary.grand).value,r.directLabor);
 });
 test('sheets are linked by formulas: quantity → 일위대가 → 설계내역서, prices and wages from their base sheets',()=>{
@@ -43,5 +53,5 @@ test('rounding mode and empty optional sections are handled',()=>{
   const s=fresh();s.rounding='round';
   const {cell}=view(s);assert.equal(cell('설계내역서','F8').formula,'ROUND(C8*E8,0)');
   const t=fresh();t.rates=[];const v=view(t);
-  assert.equal(v.cell('원가계산서','D6').formula,'SUM(D5:D5)');
+  assert.equal(v.cell('원가계산서','D7').formula,'SUM(D5:D6)');assert.equal(v.cell('원가계산서','C9').value,'간 접 노 무 비');
 });
