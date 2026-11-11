@@ -63,17 +63,41 @@ test('catalog entry points support search, source review and registration with a
  listeners.input.forEach(fn=>fn({target:{dataset:{},id:'catalog-search',value:'중대재해'}}));
  assert.match(ui.render({standards:[]}),/전체 문서 본문 일치/);
 });
-test('main navigation renders the complete catalog through the app entry point',()=>{
+function startApp(){
  const listeners={},elements=new Map();
  const element=selector=>{if(!elements.has(selector))elements.set(selector,{innerHTML:'',textContent:'',scrollIntoView(){}});return elements.get(selector);};
  const context={standardCatalog:data,structuredClone,Estimator:E,crypto:require('node:crypto').webcrypto,
  document:{querySelector:element,addEventListener:(type,handler)=>(listeners[type]??=[]).push(handler)},window:{addEventListener(){}}};
  vm.createContext(context);
  for(const name of ['standards.js','catalog-ui.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../src',name),'utf8'),context);
- const button={dataset:{nav:'2'}};
- for(const listener of listeners.click)listener({target:{closest:()=>button}});
+ const click=(id='',dataset={})=>Promise.all(listeners.click.map(listener=>listener({target:{closest:()=>({id,dataset})}})));
+ return {element,click};
+}
+test('main navigation renders the complete catalog through the app entry point',async()=>{
+ const {element,click}=startApp();
+ await click('',{nav:'2'});
  assert.equal(element('#title').textContent,'공종 및 품셈 검색');
  assert.match(element('#view').innerHTML,/목차 항목 822개/);
  assert.match(element('#view').innerHTML,/4032개/);
  assert.doesNotMatch(element('#view').innerHTML,/광케이블·광분배함·L2\/L3·전송장비·배관·장비 이설은 기준자료 미등록/);
+});
+test('settings apply the offered rate example and accept the earlier wrapped format',async()=>{
+ const {element,click}=startApp();
+ await click('',{nav:'10'});
+ element('#config-type').value='rates';
+ await click('load-config');
+ assert.match(element('#config-status').textContent,/등록된 항목이 없습니다/);
+ await click('config-example');
+ const example=JSON.parse(element('#config').value);
+ assert.equal(example[0].enabled,false);
+ await click('apply-config');
+ assert.match(element('#config-status').textContent,/1건을 적용/);
+ await click('',{nav:'7'});
+ assert.match(element('#view').innerHTML,/간접노무비 · 적용 근거 및 적용 여부 검토 필요/);
+ await click('',{nav:'10'});
+ element('#config').value=JSON.stringify({rates:[{...example[0],reviewed:true,enabled:true,rate:5}]});
+ await click('apply-config');
+ assert.match(element('#config-status').textContent,/1건을 적용/);
+ await click('',{nav:'7'});
+ assert.match(element('#view').innerHTML,/간접노무비.*5%/);
 });
