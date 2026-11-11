@@ -70,11 +70,13 @@ function startApp(){
  const listeners={},elements=new Map();
  const element=selector=>{if(!elements.has(selector))elements.set(selector,{innerHTML:'',textContent:'',scrollIntoView(){}});return elements.get(selector);};
  const context={standardCatalog:data,structuredClone,Estimator:E,crypto:require('node:crypto').webcrypto,
+ FormData:class {constructor(form){this.fields=form.fields;}get(name){return this.fields[name];}getAll(name){return this.fields[name]||[];}},
  document:{querySelector:element,addEventListener:(type,handler)=>(listeners[type]??=[]).push(handler)},window:{addEventListener(){}}};
  vm.createContext(context);
- for(const name of ['standards.js','catalog-ui.js','estimate-ui.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../src',name),'utf8'),context);
+ for(const name of ['standards.js','catalog-ui.js','estimate-ui.js','basis-ui.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../src',name),'utf8'),context);
  const click=(id='',dataset={})=>Promise.all(listeners.click.map(listener=>listener({target:{closest:()=>({id,dataset})}})));
- return {element,click};
+ const submit=(type,fields)=>Promise.all(listeners.submit.map(listener=>listener({preventDefault(){},target:{dataset:{basisForm:type},fields}})));
+ return {element,click,submit};
 }
 test('main navigation renders the complete catalog through the app entry point',async()=>{
  const {element,click}=startApp();
@@ -121,4 +123,27 @@ test('settings supply the base adjustment when a standard has no surcharges',asy
  for(const standard of saved.slice(1,3)){
   assert.deepEqual(standard.adjustments.map(a=>[a.id,a.factor]),[['base',1]]);
  }
+});
+test('wage and rate forms save valid rows and keep rate IDs on edit',async()=>{
+ const {element,click,submit}=startApp();
+ await click('',{nav:'10'});
+ const period={from:'2026-01-01',to:'2026-12-31',source:'검증용'};
+ await submit('wages',{...period,trade:'통신케이블공',price:'100000'});
+ assert.match(element('#view').innerHTML,/100,000/);
+ await submit('wages',{...period,trade:'통신케이블공',price:'200000'});
+ assert.match(element('#basis-status-wages').textContent,/적용기간이 겹칩니다/);
+ const rate={...period,name:'검증 제비율',rate:'5',status:'include',bases:['directLabor']};
+ await submit('rates',rate);
+ element('#config-type').value='rates';
+ await click('load-config');
+ const first=JSON.parse(element('#config').value)[0];
+ assert.equal(first.enabled,true);
+ assert.deepEqual(first.bases,['directLabor']);
+ await click('',{basisEdit:'rates',index:'0'});
+ await submit('rates',{...rate,rate:'7'});
+ await click('load-config');
+ const [saved,...rest]=JSON.parse(element('#config').value);
+ assert.equal(saved.id,first.id);
+ assert.equal(saved.rate,7);
+ assert.equal(rest.length,0);
 });

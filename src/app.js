@@ -27,7 +27,7 @@ function costSheet(result){
  <p>${esc(state.project.name||'공사명 미입력')} · ${esc(state.project.date)}</p>
  ${table(['비목','금액 (원)','적용요율','산출 근거'],detail.map(([name,amount,rate,basis])=>`<tr><td>${esc(name)}</td><td class="num">${money(amount)}</td><td>${esc(rate)}</td><td>${esc(basis)}</td></tr>`).concat(`<tr class="estimate-total"><th>총공사금액</th><td class="num"><strong>${money(result.total)}</strong></td><td colspan="2">${result.errors.length?'검토 중 금액':''}</td></tr>`))}
  <label><input type="checkbox" data-key="ratesReviewed" ${state.ratesReviewed?'checked':''}> 제비율 전체 적용·제외 검토 완료</label>
- <p class="muted">제비율은 적용 기준 및 설정에서 등록합니다. 빈 목록을 검토 완료하면 모든 제비율을 제외합니다.</p></div>`;
+ <p class="muted">제비율은 적용 기준 및 설정에서 직접 입력합니다. 빈 목록을 검토 완료하면 모든 제비율을 제외합니다.</p></div>`;
 }
 function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function saveJson(data,name){download(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),name);}
@@ -45,7 +45,7 @@ function render(){
  if(active===5 || active===6)html=table(['공종','수량','직종별 품량 / 노임 근거','노무비'],result.labor.map(l=>`<tr><td>${esc(l.standard.name)}<p>${esc(l.adjustment.basis)}</p></td><td>${l.quantity} ${esc(l.standard.unit)}</td><td>${l.details.map(d=>`${esc(d.trade)} · ${d.base} × ${l.quantity} ÷ ${l.standard.baseQuantity} × ${l.adjustment.factor} = ${d.manDays.toFixed(6)}인<br>${money(d.wage)}원 · ${esc(d.source)}`).join('<hr>')}</td><td class="num">${money(l.amount)}</td></tr>`))+`<div class="card">재료비 ${money(result.material)}원 / 직접노무비 ${money(result.directLabor)}원<p class="muted">직접노무비는 Excel과 동일하게 직종별 공량을 합산한 뒤 원 단위 처리합니다.</p></div>`;
  if(active===8)html=`<div class="card"><h2>빈 설계내역서 연결</h2><input id="template-file" type="file" accept=".xlsx"><p class="muted">원본은 메모리에 유지됩니다. 제공된 빈내역 양식의 구조를 검사합니다. XLSM, 임베디드 개체 및 서명 파일은 지원하지 않습니다. 원본 외부 참조는 보존하며 별도 안내합니다.</p>${template?'<p>불러온 시트 · '+template.sheets.map(s=>esc(s.name)).join(' / ')+'</p>':''}</div><div class="card"><h2>노임단가 / 자재단가 가져오기</h2><select id="import-type"><option value="wages">노임단가</option><option value="materials">자재단가</option></select><input id="data-file" type="file" accept=".xlsx"><p class="muted">제공 양식의 인건비산출기초 B6:C18 또는 자재단가산출기초 A4:E25를 읽습니다. 노임 적용기간은 설정에서 확인하세요.</p></div>`;
  if(active===9)html=`<div class="card"><h2>원본 양식으로 Excel 생성</h2><p>재료비 9행 · 직종 7행 · 공종 19행까지 지원</p><p>기존 수식 변경 이력을 함께 저장할 수 있습니다. Excel에서 열면 전체 수식을 재계산합니다.</p><button id="export" class="primary">XLSX 다운로드</button> <button id="audit">최근 수식 변경 이력 저장</button><p class="muted">제공 빈 양식의 #REF! 2곳을 수정하고, 검토한 제비율로 기존 고정 요율을 교체합니다. 원본의 천원 단위 최종 절사는 원 단위 합계로 변경합니다.</p></div>`;
- if(active===10)html=`<div class="card"><label>원 단위 처리 <select data-key="rounding"><option value="floor" ${state.rounding==='floor'?'selected':''}>절사</option><option value="round" ${state.rounding==='round'?'selected':''}>반올림</option></select></label><p>노임단가와 제비율은 출처·적용기간을 포함해 등록하세요. JSON은 전체 목록을 교체합니다.</p><select id="config-type"><option value="wages">노임단가</option><option value="rates">제비율</option><option value="standards">품셈</option></select><button id="load-config">편집할 목록 표시</button><button id="config-example">예제 넣기</button><textarea id="config" aria-label="기준 데이터 JSON"></textarea><button id="apply-config" class="primary">입력 검증 후 적용</button><p id="config-status" role="status"></p><details><summary>등록 형식</summary><p>예제 넣기를 누르면 선택한 기준의 목록 형식이 입력됩니다. 제비율의 rate는 퍼센트 숫자입니다. reviewed는 근거를 검토한 경우 true, enabled는 적용할 때 true입니다.</p><p>산정금액 ID는 material, directLabor, expense 및 앞서 등록한 제비율 id를 사용합니다. 출력 셀은 원가계산서 D9, D11~D19, D22, D23, D25입니다.</p></details><button id="security">현재 정적 리소스 요청 검사</button><pre id="security-result"></pre></div>`;
+ if(active===10)html=`<div class="card"><label>원 단위 처리 <select data-key="rounding"><option value="floor" ${state.rounding==='floor'?'selected':''}>절사</option><option value="round" ${state.rounding==='round'?'selected':''}>반올림</option></select></label><p>노임단가와 제비율은 아래 입력란에서 관리할 수 있습니다.</p></div>${BasisUI.render(state)}<div class="card"><details id="basis-json"><summary>기준 데이터 JSON 편집</summary><p>JSON을 적용하면 선택한 기준의 목록 전체를 교체합니다.</p><select id="config-type"><option value="wages">노임단가</option><option value="rates">제비율</option><option value="standards">품셈</option></select><button id="load-config">편집할 목록 표시</button><button id="config-example">예제 넣기</button><textarea id="config" aria-label="기준 데이터 JSON"></textarea><button id="apply-config" class="primary">입력 검증 후 적용</button><p id="config-status" role="status"></p><details><summary>등록 형식</summary><p>예제 넣기를 누르면 선택한 기준의 목록 형식이 입력됩니다. 제비율의 rate는 퍼센트 숫자입니다. reviewed는 근거를 검토한 경우 true, enabled는 적용할 때 true입니다.</p><p>산정금액 ID는 material, directLabor, expense 및 앞서 등록한 제비율 id를 사용합니다. 출력 셀은 원가계산서 D9, D11~D19, D22, D23, D25입니다.</p></details></details><button id="security">현재 정적 리소스 요청 검사</button><pre id="security-result"></pre></div>`;
  if(active===2)html=CatalogUI.render(state);
  if(active===estimatePage)html=EstimateUI.render(state,result);
  if(active===7)html=costSheet(result);
@@ -90,7 +90,7 @@ function validate(next){
 document.addEventListener('change',async event=>{try{
  const t=event.target;
  if(t.dataset.key){const old=structuredClone(state);setValue(t.dataset.key,t.type==='checkbox'?t.checked:t.type==='number'?Number(t.value):t.value);try{validate(state);}catch(e){state=old;throw e;}state.history.push({at:new Date().toISOString(),field:t.dataset.key,value:t.type==='checkbox'?t.checked:t.value});if(active!==estimatePage||!t.dataset.key.startsWith('project.'))render();}
- if(t.id==='open'){const data=JSON.parse(await t.files[0].text());state=validate(data);template=null;EstimateUI.reset();render();message('작업을 불러왔습니다. Excel 양식은 다시 연결하세요.');}
+ if(t.id==='open'){const data=JSON.parse(await t.files[0].text());state=validate(data);template=null;EstimateUI.reset();BasisUI.reset();render();message('작업을 불러왔습니다. Excel 양식은 다시 연결하세요.');}
  if(t.id==='template-file'){template=await ExcelIO.open(t.files[0]);render();message(['양식 파일을 브라우저 메모리에서 읽었습니다.',...template.warnings].join(' '));}
  if(t.id==='data-file'){
  const book=await ExcelIO.open(t.files[0]),type=$('#import-type').value;
@@ -106,7 +106,7 @@ document.addEventListener('change',async event=>{try{
 }catch(e){message(e.message);}});
 document.addEventListener('input',e=>{if(e.target.id==='search')document.querySelectorAll('[data-search]').forEach(r=>r.hidden=!r.dataset.search.toLowerCase().includes(e.target.value.toLowerCase()));});
 document.addEventListener('click',async e=>{try{const t=e.target.closest('button');if(!t)return;
- if(t.dataset.nav!==undefined){active=Number(t.dataset.nav);returnToEstimate=false;render();}
+ if(t.dataset.nav!==undefined){active=Number(t.dataset.nav);returnToEstimate=false;BasisUI.reset();render();}
  if(t.dataset.addStandard){state.quantities.push({id:crypto.randomUUID(),standardId:t.dataset.addStandard,location:'',length:1,count:1,basis:'',note:'',adjustment:'base',reviewed:false});active=3;render();}
  if(t.id==='add-material'){state.materials.push({id:crypto.randomUUID(),name:'',spec:'',unit:'개',price:0,quantity:1,date:'',source:'',note:''});render();}
  const list=active===3?'quantities':'materials';
@@ -130,6 +130,10 @@ document.addEventListener('click',async e=>{try{const t=e.target.closest('button
    next[type]=readConfigList(type,$('#config').value);
    if(type==='rates')next.ratesReviewed=false;
    state=validate(next);
+   BasisUI.reset();
+   render();
+   $('#basis-json').open=true;
+   $('#config-type').value=type;
    $('#config').value=JSON.stringify(state[type],null,2);
    $('#config-status').textContent=`${state[type].length}건을 적용했습니다. ${type==='rates'?'공사원가계산에서 적용 결과와 검토 항목을 확인하세요. ':''}작업 JSON을 저장하면 변경사항을 보관할 수 있습니다.`;
   }catch(error){$('#config-status').textContent=error.message;}
@@ -141,7 +145,7 @@ document.addEventListener('click',async e=>{try{const t=e.target.closest('button
   download(workbook,'공사비 산정.xlsx');message('공사비 산정 Excel을 저장했습니다.');
  }
  if(t.id==='security'){
- const entries=performance.getEntriesByType('resource');const allowed=['src/style.css?v=estimate-workflow-1','vendor/jszip.min.js','src/engine.js?v=estimate-workflow-1','src/standards.js','src/catalog-data.js','src/catalog-ui.js?v=estimate-workflow-1','src/xlsx.js?v=estimate-workflow-1','src/estimate-ui.js?v=estimate-workflow-1','src/app.js?v=estimate-workflow-1'];
+ const entries=performance.getEntriesByType('resource');const allowed=['src/style.css?v=direct-basis-1','vendor/jszip.min.js','src/engine.js?v=estimate-workflow-1','src/standards.js','src/catalog-data.js','src/catalog-ui.js?v=estimate-workflow-1','src/xlsx.js?v=estimate-workflow-1','src/estimate-ui.js?v=estimate-workflow-1','src/app.js?v=direct-basis-1','src/basis-ui.js?v=direct-basis-1'];
  const unexpected=entries.filter(r=>!allowed.some(a=>r.name===new URL(a,location.href).href) && !/^page-[0-9]{3}\.webp$/.test(r.name.startsWith(new URL('src/reference/',location.href).href)?r.name.slice(new URL('src/reference/',location.href).href.length):''));
  $('#security-result').textContent=`정적 리소스 ${entries.length}건 / 허용 목록 외 ${unexpected.length}건\nCSP connect-src 'none' 적용\n추가 검증은 README의 브라우저 네트워크 절차를 따르세요.`;
  }
@@ -164,4 +168,10 @@ EstimateUI.connect({getState:()=>state,refresh:render,message,
  openDraft(id){active=2;returnToEstimate=true;CatalogUI.openDraft(id);},
  calculate(){active=7;message('');render();}
 });
+BasisUI.connect({refresh:render,update(type,apply){
+ const next=structuredClone(state);
+ apply(next[type]);
+ if(type==='rates')next.ratesReviewed=false;
+ state=validate(next);
+}});
 render();
