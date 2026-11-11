@@ -44,6 +44,7 @@
   async function write(template,state,result){
     if(result.errors.length) throw Error('검토 항목을 먼저 해결하세요.');
     if(result.expenseRows?.length)throw Error('기계·기타경비가 포함된 작업은 공사원가계산의 엑셀 저장을 사용하세요.');
+    if(result.labor.some(row=>row.adjustment.wageFactor!==1))throw Error('행별 노임 할증은 공사원가계산의 엑셀 저장을 사용하세요. 기존 빈 양식은 직종당 하나의 노임만 지원합니다.');
     if(result.materials.length>9 || result.labor.length>20) throw Error('빈 양식 입력 공간 초과 (재료 9행, 공종 20행)');
     const sheets=template.sheets.map(s=>({...s})),changes=[];
     const set=(name,cell,value,formula)=>{
@@ -104,9 +105,9 @@
     for(const cell of rateCells){set('원가계산서',cell,0);set('원가계산서',cell.replace('D','E'),'검토 결과 제외');}
     const refs={material:'D7',directLabor:'D8',expense:'0'};
     for(const rule of state.rates){
-      const formula=rule.enabled?`${rounding}((${rule.bases.map(b=>refs[b]).join('+')})*${Number(rule.rate)}/100,0)`:'0';
+      const formula=rule.enabled?(rule.method==='fixed'?`${rounding}(${Number(rule.fixedAmount)},0)`:`${rounding}((${rule.bases.map(b=>refs[b]).join('+')})*${Number(rule.rate)}/100+${Number(rule.addition??0)},0)`):'0';
       if(formula.includes('undefined'))throw Error('제비율 참조 오류');
-      set('원가계산서',rule.cell,'',formula);set('원가계산서',rule.cell.replace('D','E'),`${rule.name} · ${rule.rate}% · ${rule.source}`);refs[rule.id]=rule.cell;
+      set('원가계산서',rule.cell,'',formula);set('원가계산서',rule.cell.replace('D','E'),`${rule.name} · ${rule.method==='fixed'?'금액 직접입력':rule.rate+'% + 기초액 '+(rule.addition??0)+'원'} · ${rule.source}`);refs[rule.id]=rule.cell;
     }
     set('원가계산서','D26','','SUM(D24:D25)');
     for(const sheet of sheets){
@@ -136,11 +137,11 @@
       ['공사원가계산서',[['비목','금액 (원)','요율 (%)','산정금액 (원)','산출 근거'],
         ['재료비',result.material],['직접노무비',result.directLabor],
         ...result.expenseRows.map(e=>[e.name,e.amount,'','',e.kind==='machine'?[`${e.hours}시간 × ${e.unitPrice}원`,e.source].filter(Boolean).join(' · '):e.source]),
-        ...result.costs.map(c=>[c.name,c.amount,c.enabled?Number(c.rate):0,c.base,c.enabled?c.source:`적용 제외 · ${c.source}`]),
+        ...result.costs.map(c=>[c.name,c.amount,c.enabled?(c.method==='fixed'?'금액 직접입력':Number(c.rate)):0,c.base,c.enabled?[c.method==='fixed'?'직접 산정금액':`기초액 ${c.addition??0}원`,c.source].join(' · '):`적용 제외 · ${c.source}`]),
         ['총공사금액',result.total],[],['공사명',state.project.name],['적용 기준일',state.project.date]]],
       ['산출내역서',[['품셈 번호','공종·항목','규격','단위','수량','재료비','노무비','경비','합계','산출 근거'],...detail]],
-      ['표준일위대가',[['품셈 번호','공종','규격','수량 단위','직종','기준수량','기본품','할증 계수','노임단가','단위당 노무비','단위당 재료 단가','근거'],...result.labor.flatMap(row=>row.details.map(d=>[
-        row.standard.code,row.standard.name,row.standard.spec,row.standard.unit,d.trade,row.standard.baseQuantity,d.base,row.adjustment.factor,d.wage,d.base*row.adjustment.factor*d.wage/row.standard.baseQuantity,linkedMaterials.get(row.id)?.price??'',row.adjustment.basis]))]],
+      ['표준일위대가',[['품셈 번호','공종','규격','수량 단위','직종','기준수량','기본품','노무비 총 계수','기본 노임단가','단위당 노무비','단위당 재료 단가','근거','품 계수','노임 계수','할증 후 노임단가','공량 (인)','재료 계수'],...result.labor.flatMap(row=>row.details.map(d=>[
+        row.standard.code,row.standard.name,row.standard.spec,row.standard.unit,d.trade,row.standard.baseQuantity,d.base,row.adjustment.factor,d.wage,d.base*row.adjustment.laborFactor*d.appliedWage/row.standard.baseQuantity,linkedMaterials.get(row.id)?.price??'',row.adjustment.basis,row.adjustment.laborFactor,row.adjustment.wageFactor,d.appliedWage,d.manDays,row.adjustment.materialFactor]))]],
       ['자재단가표',[['품명','규격','단위','수량','단가','금액','단가 출처'],...result.materials.map(m=>[m.name,m.spec,m.unit,Number(m.quantity),Number(m.price),m.amount,m.source])]],
       ['노임단가표',[['직종','일 노임 (원)','적용 시작일','적용 종료일','근거'],...state.wages.map(w=>[w.trade,Number(w.price),w.from,w.to,w.source])]]
     ];

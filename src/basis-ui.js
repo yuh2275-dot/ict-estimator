@@ -34,13 +34,13 @@
       ${field('일 노임 (원)','price',wage.price,'number')}${field('적용 시작일','from',wage.from,'date')}${field('적용 종료일','to',wage.to,'date')}${field('출처','source',wage.source)}
       </div>${buttons('wages')}</form>
       ${table(['직종','일 노임 (원)','적용기간','출처','관리'],state.wages.map((r,i)=>`<tr><td>${esc(r.trade)}</td><td class="num">${Number(r.price).toLocaleString('ko-KR')}</td><td>${period(r)}</td><td>${esc(r.source)}</td>${actions('wages',i)}</tr>`))}</section>
-      <section class="card estimate-panel"><h2>제비율 직접 입력</h2><form data-basis-form="rates"><div class="estimate-fields">
-      ${field('항목명','name',rate.name)}${field('요율 (%)','rate',rate.rate,'number')}${field('적용 시작일','from',rate.from,'date')}${field('적용 종료일','to',rate.to,'date')}${field('출처·적용 근거','source',rate.source)}
+      ${RateSheet.render(state)}<section class="card estimate-panel"><details id="basis-custom-rate"><summary>제비율 개별 추가·수정</summary><form data-basis-form="rates"><div class="estimate-fields">
+      ${field('항목명','name',rate.name)}<label class="field">계산 방식<select name="method"><option value="percent">기준금액 × 요율 + 기초액</option><option value="fixed" ${rate.method==='fixed'?'selected':''}>금액 직접입력</option></select></label>${field('요율 (%)','rate',rate.rate,'number',false)}${field('기초액 (원)','addition',rate.addition??0,'number',false)}${field('직접 산정금액 (원)','fixedAmount',rate.fixedAmount,'number',false)}${field('적용 시작일','from',rate.from,'date')}${field('적용 종료일','to',rate.to,'date')}${field('출처·적용 근거','source',rate.source)}
       <label class="field">검토 결과<select name="status"><option value="pending">검토 대기</option><option value="include" ${status==='include'?'selected':''}>근거 확인 · 적용</option><option value="exclude" ${status==='exclude'?'selected':''}>근거 확인 · 제외</option></select></label></div>
       <fieldset><legend>산정 기준 금액</legend><div class="toolbar">${choices.map(([id,label])=>`<label><input type="checkbox" name="bases" value="${esc(id)}" ${rate.bases?.includes(id)?'checked':''}> ${esc(label)}</label>`).join('')}</div><p class="muted">선택한 금액의 합계에 요율을 적용합니다. 다른 제비율 금액을 포함하려면 그 항목을 먼저 등록하세요.</p></fieldset>
       <details ${rate.cell?'open':''}><summary>기존 빈내역서 양식에 내보낼 때</summary>${field('원가계산서 출력 셀 (선택)','cell',rate.cell,'text',false)}<p class="muted">기존 양식에는 D9, D11~D19, D22, D23, D25 중 항목에 맞는 셀을 지정하세요. 공사비 산정 화면의 엑셀 저장에는 셀 지정이 필요 없습니다.</p></details>
       ${buttons('rates')}</form>
-      ${table(['항목','요율','산정 기준','적용기간','검토 결과','출처·근거','관리'],state.rates.map((r,i)=>`<tr><td>${esc(r.name)}</td><td class="num">${esc(r.rate)}%</td><td>${esc(r.bases.map(id=>displayBases(state,id)).join(' + '))}</td><td>${period(r)}</td><td>${r.reviewed?(r.enabled?'적용':'제외'):'검토 대기'}</td><td>${esc(r.source)}</td>${actions('rates',i)}</tr>`))}</section>`;
+      ${table(['항목','요율 / 직접금액','산정 기준','적용기간','검토 결과','출처·근거','관리'],state.rates.map((r,i)=>`<tr><td>${esc(r.name)}</td><td class="num">${r.method==='fixed'?esc(r.fixedAmount)+'원':esc(r.rate)+'%'}</td><td>${esc(r.bases.map(id=>displayBases(state,id)).join(' + '))}</td><td>${period(r)}</td><td>${r.reviewed?(r.enabled?'적용':'제외'):'검토 대기'}</td><td>${esc(r.source)}</td>${actions('rates',i)}</tr>`))}</details></section>`;
   }
 
   function notice(type,text){document.querySelector('#basis-status-'+type).textContent=text;}
@@ -63,17 +63,20 @@
           if(rows.some((r,i)=>i!==index&&r.trade===next.trade&&r.from<=next.to&&r.to>=next.from))throw Error('같은 직종의 적용기간이 겹칩니다.');
         }else{
           next.id=next.id||'rate_'+crypto.randomUUID().replaceAll('-','');
-          next.name=read('name');next.rate=Estimator.number(read('rate'));
+          next.name=read('name');next.rate=read('rate')===''?null:Estimator.number(read('rate'));next.method=read('method')||'percent';
+          next.addition=read('addition')===''?0:Estimator.number(read('addition'));next.fixedAmount=read('fixedAmount')===''?null:Estimator.number(read('fixedAmount'));
           next.bases=values.getAll('bases');next.cell=read('cell').toUpperCase();
           next.reviewed=read('status')!=='pending';next.enabled=read('status')==='include';
           if(!next.name)throw Error('제비율 항목명을 입력하세요.');
-          if(next.enabled&&!next.bases.length)throw Error('산정 기준 금액을 하나 이상 선택하세요.');
+          if(next.enabled&&next.method==='percent'&&(!next.bases.length||next.rate==null))throw Error('요율과 산정 기준 금액을 입력하세요.');
+          if(next.enabled&&next.method==='fixed'&&next.fixedAmount==null)throw Error('직접 산정금액을 입력하세요.');
           if(next.cell&&!ExcelIO.rateCells.includes(next.cell))throw Error('기존 양식에서 지원하는 출력 셀을 입력하세요.');
           if(next.cell&&rows.some((r,i)=>i!==index&&r.cell===next.cell))throw Error('이미 사용 중인 출력 셀입니다.');
         }
         if(index<0)rows.push(next);else rows[index]=next;
       });
       editing[type]=-1;host.refresh();notice(type,'저장했습니다. 작업 JSON으로 보관할 수 있습니다.');
+      if(type==='rates')document.querySelector('#basis-custom-rate').open=true;
     }catch(error){notice(type,error.message);}
   });
   document.addEventListener('click',event=>{
@@ -92,6 +95,7 @@
       }
       editing[type]=basisEdit?Number(index):-1;
       host.refresh();
+      if(type==='rates')document.querySelector('#basis-custom-rate').open=true;
       if(basisEdit)document.querySelector(`[data-basis-form="${type}"]`)?.scrollIntoView({block:'nearest'});
       if(basisDelete)notice(type,'삭제했습니다.');
     }catch(error){notice(type,error.message);}

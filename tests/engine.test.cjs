@@ -24,4 +24,4 @@ test('linked material and direct expenses are included in the cost and rate base
  assert.equal(result.costs[0].amount,115);
  assert.equal(result.total,2365);
 });
-test('security source scan',()=>{for(const file of ['app.js','engine.js','standards.js','xlsx.js','catalog-ui.js','estimate-ui.js']){const text=fs.readFileSync(require('node:path').join(__dirname,'../src',file),'utf8');assert.doesNotMatch(text,/\bfetch\s*\(|XMLHttpRequest|WebSocket|sendBeacon|localStorage|indexedDB|console\.log|document\.cookie/);}});
+test('security source scan',()=>{for(const file of ['app.js','engine.js','standards.js','xlsx.js','catalog-ui.js','estimate-ui.js','basis-ui.js','rate-sheet.js','surcharges.js']){const text=fs.readFileSync(require('node:path').join(__dirname,'../src',file),'utf8');assert.doesNotMatch(text,/\bfetch\s*\(|XMLHttpRequest|WebSocket|sendBeacon|localStorage|indexedDB|console\.log|document\.cookie/);}});

@@ -70,14 +70,31 @@ function startApp(){
  const listeners={},elements=new Map();
  const element=selector=>{if(!elements.has(selector))elements.set(selector,{innerHTML:'',textContent:'',scrollIntoView(){}});return elements.get(selector);};
  const context={standardCatalog:data,structuredClone,Estimator:E,crypto:require('node:crypto').webcrypto,
- FormData:class {constructor(form){this.fields=form.fields;}get(name){return this.fields[name];}getAll(name){return this.fields[name]||[];}},
+ FormData:class {constructor(form){this.fields=form.fields;}get(name){return this.fields[name];}getAll(name){return this.fields[name]||[];}has(name){return Object.hasOwn(this.fields,name);}},
  document:{querySelector:element,addEventListener:(type,handler)=>(listeners[type]??=[]).push(handler)},window:{addEventListener(){}}};
  vm.createContext(context);
- for(const name of ['standards.js','catalog-ui.js','estimate-ui.js','basis-ui.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../src',name),'utf8'),context);
+ for(const name of ['surcharges.js','rate-sheet.js','standards.js','catalog-ui.js','estimate-ui.js','basis-ui.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../src',name),'utf8'),context);
  const click=(id='',dataset={})=>Promise.all(listeners.click.map(listener=>listener({target:{closest:()=>({id,dataset})}})));
  const submit=(type,fields)=>Promise.all(listeners.submit.map(listener=>listener({preventDefault(){},target:{dataset:{basisForm:type},fields}})));
- return {element,click,submit};
+ const submitForm=(id,fields)=>Promise.all(listeners.submit.map(listener=>listener({preventDefault(){},target:{id,dataset:{},fields}})));
+ return {element,click,submit,submitForm};
 }
+test('dashboard opens first and cost estimation is the third navigation entry',()=>{
+ const {element}=startApp();assert.equal(element('#title').textContent,'대시보드');
+ assert.deepEqual([...element('#nav').innerHTML.matchAll(/data-nav="(\d+)"/g)].slice(0,3).map(m=>Number(m[1])),[0,1,11]);
+});
+test('reference rate table preserves entered values and supports manual amount and blank exclusion',async()=>{
+ const {element,click,submit,submitForm}=startApp();await click('',{nav:'10'});
+ await submit('rates',{name:'간접노무비',rate:'5',bases:['directLabor'],status:'include',source:'TEST',from:'2026-01-01',to:'2026-12-31'});
+ await click('rate-sheet-template');element('#config-type').value='rates';await click('load-config');
+ const rows=JSON.parse(element('#config').value);assert.equal(rows.length,17);assert.equal(rows[0].rate,5);
+ assert.ok(rows.find(r=>r.templateKey==='care').bases.includes(rows.find(r=>r.templateKey==='health').id));
+ const fields={};rows.forEach((r,i)=>Object.assign(fields,{['status_'+i]:'exclude',['method_'+i]:r.method||'percent',['rate_'+i]:'',['fixed_'+i]:'',['addition_'+i]:'',['bases_'+i]:r.bases,['source_'+i]:'TEST',['from_'+i]:'2026-01-01',['to_'+i]:'2026-12-31'}));
+ const i=rows.findIndex(r=>r.templateKey==='safety');fields['status_'+i]='include';fields['method_'+i]='fixed';fields['fixed_'+i]='12345';
+ await submitForm('rate-sheet-form',fields);await click('load-config');
+ const saved=JSON.parse(element('#config').value);assert.equal(saved[i].fixedAmount,12345);assert.ok(saved.every(r=>r.reviewed));assert.equal(saved[0].rate,null);
+ await click('',{nav:'7'});assert.match(element('#view').innerHTML,/12,345/);
+});
 test('main navigation renders the complete catalog through the app entry point',async()=>{
  const {element,click}=startApp();
  await click('',{nav:'2'});
