@@ -9,7 +9,7 @@
   let search = {mode:'related',term:''};
   let host;
   let surchargeGroup='terrain';
-  function factorSummary(a){return `${a.parallel.runs>1?'케이블 총길이 기준 · ':''}공종 해설 ×${a.specialFactor}${a.commentary.length?` × 해설 조건 ×${Number(a.commentaryFactor.toFixed(6))}`:''}${a.parallel.runs>1?` × 동시포설 (${a.parallel.bundleFactor} ÷ ${a.parallel.runs})`:''} × 품 (1 + ${Number(a.laborPercent.toFixed(4))}%) × 노임 (1 + ${a.wagePercent}%) = 노무비 ×${Number(a.factor.toFixed(6))} · 재료 ×${a.materialFactor}`;}
+  function factorSummary(a){return `${a.parallel.runs>1?'케이블 총길이 기준 · ':''}${a.id==='custom'?'추가 배율':'공종 해설'} ×${a.specialFactor}${a.commentary.length?` × 해설 조건 ×${Number(a.commentaryFactor.toFixed(6))}`:''}${a.parallel.runs>1?` × 동시포설 (${a.parallel.bundleFactor} ÷ ${a.parallel.runs})`:''} × 품 (1 + ${Number(a.laborPercent.toFixed(4))}%) × 노임 (1 + ${a.wagePercent}%) = 노무비 ×${Number(a.factor.toFixed(6))} · 재료 ×${a.materialFactor}`;}
   function parallelSummary(selected){
     try{
       const p=Surcharges.parallel(selected,line),input=Estimator.number(quantityInput??line.length*line.count),total=input*p.quantityMultiplier;
@@ -28,6 +28,11 @@
   const pageLink=(page,label)=>page?`<a href="src/reference/page-${String(page+30).padStart(3,'0')}.webp" target="_blank" rel="noopener">${esc(label??`인쇄 ${page}쪽`)}</a>`:'';
   function commentarySummary(selected){
     try{const r=Surcharges.commentaryFactors(selected,line);return r.applied.length?`${r.applied.map(a=>`${a.name} ×${Number(a.factor.toFixed(6))}`).join(' · ')} = 해설 조건 ×${Number(r.factor.toFixed(6))}`:'해설 조건 없음 (×1)';}catch(error){return error.message;}
+  }
+  function customWarning(selected){
+    const warnings=Surcharges.customWarnings(selected,line);
+    if(!warnings.length)return '<div id="custom-warning"></div>';
+    return `<div id="custom-warning" class="warning">${warnings.map(w=>`<p>⚠ ${esc(w)}</p>`).join('')}<label><input type="checkbox" name="customConfirmed" ${line.customConfirmed?'checked':''}> 추가 배율 경고 확인 (중복이 아니고 배율이 맞음)</label></div>`;
   }
   function commentaryEditor(selected){
     if(!selected)return '';
@@ -56,7 +61,7 @@
         ${item.input?`<label class="field">${{percent:'할증률 (%)',height:'지상 높이 (m)',floor:'층수',hours:'왕복 이동시간 (시간)'}[item.input]}<input type="number" min="${item.min??0}" ${item.max!=null?`max="${item.max}"`:''} step="${item.input==='floor'?1:'any'}" data-surcharge-value="${i}" value="${esc(s.value)}" required></label>`:''}
         <label class="field">적용 근거${item.input==='percent'?' (필수)':' (선택)'}<input data-surcharge-note="${i}" value="${esc(s.note)}" ${item.input==='percent'?'required':''}></label><span>${calculated}${item.wageRate?' + 노임 50%':''}</span><button type="button" data-surcharge-remove="${i}">제거</button></div>`;
       }).join('')||'<p class="muted">선택한 공통 할증 없음 · 입력하지 않아도 저장됩니다.</p>'}</div><output id="surcharge-summary">${esc(summary)}</output>
-      <p class="muted">중복가산 근거: 1-2-2-15. 공종별 해설의 추가 조건은 위 공종 해설 계수에서 직접 입력할 수 있습니다.</p></fieldset>`;
+      <p class="muted">중복가산 근거: 1-2-2-15. 공종 해설 조건 선택지에 없는 해설만 위 '추가 배율 직접입력'으로 입력합니다.</p></fieldset>`;
   }
 
   function field(label,name,value='',type='text',required=false) {
@@ -109,8 +114,9 @@
       <label class="field estimate-standard">공종·규격<select name="standardId" required><option value="">등록 품셈 선택</option>${standards.map(s=>`<option value="${esc(s.id)}" ${s.id===line.standardId?'selected':''}>${esc(s.code+' '+s.name+' · '+s.spec)}</option>`).join('')}</select></label>
       <label class="field">단위<input value="${esc(selected?.unit||'')}" readonly></label>
       ${field(Surcharges.supportsParallel(selected)?(line.parallelQuantityMode==='route'?'1열 경로길이 (m)':'케이블 총길이 (m)'):'수량','quantity',quantityInput??line.length*line.count,'number',true)}${field('재료 단가 (원/단위)','materialPrice',line.materialPrice,'number')}
-      <label class="field">공종 해설 계수<select name="adjustment">${(selected?.adjustments||[{id:'base',name:'기본 조건',factor:1}]).map(a=>`<option value="${esc(a.id)}" ${a.id===line.adjustment?'selected':''}>${esc(a.name)} × ${a.factor}</option>`).join('')}<option value="custom" ${line.adjustment==='custom'?'selected':''}>해설 계수 직접입력</option></select></label>
-      ${line.adjustment==='custom'?field('해설 적용 계수 (1 = 기본)','standardFactor',line.standardFactor,'number',true)+field('해설 계수 적용 근거','standardFactorBasis',line.standardFactorBasis,'text',true):''}
+      <label class="field">공종 해설 계수 (등록 조건)<select name="adjustment">${(selected?.adjustments||[{id:'base',name:'기본 조건',factor:1}]).map(a=>`<option value="${esc(a.id)}" ${a.id===line.adjustment?'selected':''}>${esc(a.name)} × ${a.factor}</option>`).join('')}<option value="custom" ${line.adjustment==='custom'?'selected':''}>추가 배율 직접입력 (아래 선택지에 없는 해설만)</option></select></label>
+      ${line.adjustment==='custom'?field('추가 배율 (1 = 없음 · 130% → 1.3)','standardFactor',line.standardFactor,'number',true)+field('추가 배율 근거 (해설 번호·원문)','standardFactorBasis',line.standardFactorBasis,'text',true):''}
+      </div>${line.adjustment==='custom'?customWarning(selected):''}<div class="estimate-fields">
       ${field('재료 단가 출처','materialSource',line.materialSource)}
       </div>${selected?.conditions?`<details><summary>적용 조건</summary>${esc(selected.conditions)}</details>`:''}${commentaryEditor(selected)}${parallelEditor(selected)}${surchargeEditor(selected)}
       <div class="toolbar"><label><input type="checkbox" name="reviewed" ${line.reviewed?'checked':''}> 품셈·적용 조건 확인</label><button type="submit" class="primary">${lineIndex<0?'항목 저장':'수정 저장'}</button>${lineIndex<0?'':'<button type="button" id="estimate-cancel-line">취소</button>'}</div></form>
@@ -166,9 +172,13 @@
           materialPrice:value('materialPrice')===''?null:Estimator.number(value('materialPrice')),
           materialSource:value('materialSource'),adjustment:value('adjustment')||'base',reviewed:values.has('reviewed')};
         if(row.adjustment==='custom'){row.standardFactor=Estimator.number(value('standardFactor'));row.standardFactorBasis=value('standardFactorBasis');}
+        else {delete row.standardFactor;delete row.standardFactorBasis;}
         row.commentary=Object.fromEntries(Object.entries(line.commentary||{}).filter(([,v])=>v!==''&&v!=null&&v!=='none'));
         if(Surcharges.supportsParallel(standard)){row.parallelRuns=Estimator.number(value('parallelRuns'));row.parallelQuantityMode=value('parallelQuantityMode');}
         Surcharges.combined(standard,row);
+        const warnings=Surcharges.customWarnings(standard,row);
+        if(warnings.length&&!values.has('customConfirmed'))throw Error('추가 배율 경고를 확인하세요. 중복이 아니면 \'추가 배율 경고 확인\'을 체크한 뒤 저장하세요.');
+        if(warnings.length)row.customConfirmed=true;else delete row.customConfirmed;
         host.update('quantities',rows=>{
           if(lineIndex<0)rows.push(row);
           else {
@@ -206,18 +216,20 @@
     if(target.name==='materialSource')line.materialSource=target.value;
     if(target.name==='adjustment')line.adjustment=target.value;
     if(target.name==='reviewed')line.reviewed=target.checked;
-    if(target.name==='standardFactor')line.standardFactor=target.value;
+    if(target.name==='customConfirmed')line.customConfirmed=target.checked;
+    if(target.name==='standardFactor'){line.standardFactor=target.value;line.customConfirmed=false;}
     if(target.name==='standardFactorBasis')line.standardFactorBasis=target.value;
     if(target.name==='parallelRuns'){line.parallelRuns=target.value;line.reviewed=false;document.querySelector('#estimate-line [name="reviewed"]').checked=false;}
     if(target.dataset.surchargeValue!==undefined)line.surcharges[Number(target.dataset.surchargeValue)].value=target.value;
     if(target.dataset.surchargeNote!==undefined)line.surcharges[Number(target.dataset.surchargeNote)].note=target.value;
-    if(target.dataset.commentary!==undefined){line.commentary={...(line.commentary||{}),[target.dataset.commentary]:target.value};line.reviewed=false;document.querySelector('#estimate-line [name="reviewed"]').checked=false;
+    if(target.dataset.commentary!==undefined){line.commentary={...(line.commentary||{}),[target.dataset.commentary]:target.value};line.reviewed=false;line.customConfirmed=false;document.querySelector('#estimate-line [name="reviewed"]').checked=false;
       const standard=host.getState().standards.find(s=>s.id===line.standardId);
       document.querySelector('#commentary-summary').textContent=commentarySummary(standard);
     }
-    if(target.dataset.commentary!==undefined||target.dataset.surchargeValue!==undefined||target.dataset.surchargeNote!==undefined||['standardFactor','parallelRuns','quantity','materialPrice'].includes(target.name)){
+    if(target.dataset.commentary!==undefined||target.dataset.surchargeValue!==undefined||target.dataset.surchargeNote!==undefined||['standardFactor','standardFactorBasis','parallelRuns','quantity','materialPrice'].includes(target.name)){
       const standard=host.getState().standards.find(s=>s.id===line.standardId);
       try{document.querySelector('#surcharge-summary').textContent=factorSummary(Surcharges.combined(standard,line));}catch(error){document.querySelector('#surcharge-summary').textContent=error.message;}
+      const warning=document.querySelector('#custom-warning');if(warning)warning.outerHTML=customWarning(standard);
       if(Surcharges.supportsParallel(standard))document.querySelector('#parallel-summary').textContent=parallelSummary(standard);
     }
   });

@@ -106,3 +106,15 @@ test('a registered adjustment for the same commentary number hides the extracted
   const st=generic('4-4-1','제어용 케이블','1C');st.adjustments.push({id:'shield',name:'실드',factor:1.2,basis:'해설 ⑤'});
   assert.ok(!S.commentary(st).groups.some(g=>g.ref==='⑤'));
 });
+
+test('custom multiplier warns when it repeats a selected commentary condition or looks like a count',()=>{
+  const outlet=builtin('outlet');
+  // 화면 사례: 6구 Outlet에 구수 6 선택 + 추가 배율 6 → ×10.8로 중복
+  const row={adjustment:'custom',standardFactor:6,standardFactorBasis:'4구이상',commentary:{ports:6}};
+  const w=S.customWarnings(outlet,row);assert.equal(w.length,2);assert.match(w[0],/한 번 더 곱해집니다/);assert.match(w[1],/600%/);
+  close(S.combined(outlet,row).laborFactor,10.8);
+  assert.deepEqual(S.customWarnings(outlet,{...row,commentary:{}, standardFactor:1.3}),[]);
+  assert.equal(S.customWarnings(outlet,{...row,standardFactor:1.3}).length,1);
+  assert.match(S.customWarnings(outlet,{...row,commentary:{},standardFactor:1})[0],/할증이 없는 것/);
+  assert.deepEqual(S.customWarnings(outlet,{adjustment:'base',commentary:{ports:6}}),[]);
+});
