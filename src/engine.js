@@ -10,8 +10,23 @@
   function expenseAmount(row, rounding) {
     return round(row.kind === 'machine' ? number(row.hours) * number(row.unitPrice) : number(row.amount), rounding);
   }
+  // 공사 기준일에 맞는 노임단가를 찾는다. 맞는 것이 없으면 가장 가까운 기간의 노임으로 계산하고 확인 사항을 남긴다.
+  function wageFor(state, trade, issues) {
+    const date = state.project.date, all = (state.wages || []).filter(w => w.trade === trade);
+    const matches = all.filter(w => w.from <= date && w.to >= date);
+    const note = message => issues.set(trade, `노임단가 · ${trade} ${message}`);
+    if (matches.length === 1) { if (!String(matches[0].source || '').trim()) note('출처를 입력하세요.'); return matches[0]; }
+    if (matches.length > 1) { note(`기준일 ${date}에 해당하는 노임단가가 ${matches.length}건입니다. 하나만 남기세요. 가장 최근 시작 노임으로 계산했습니다.`); return [...matches].sort((a,b)=>b.from.localeCompare(a.from))[0]; }
+    if (all.length) {
+      const nearest = [...all].sort((a,b)=>Math.abs(Date.parse(a.to<date?a.to:a.from)-Date.parse(date))-Math.abs(Date.parse(b.to<date?b.to:b.from)-Date.parse(date)))[0];
+      note(`노임 적용기간(${nearest.from} ~ ${nearest.to})이 공사 기준일 ${date}을 포함하지 않습니다. 이 노임(${Number(nearest.price).toLocaleString('ko-KR')}원)으로 임시 계산했습니다. 적용기간을 확인하세요.`);
+      return nearest;
+    }
+    note('노임단가가 없습니다. 노임·제비율 설정에서 입력하면 자동으로 계산됩니다.');
+    return {trade, price:0, from:'', to:'', source:'', missing:true};
+  }
   function calculate(state) {
-    const errors = [], labor = [], materials = [], costs = [];
+    const errors = [], labor = [], materials = [], costs = [], wageIssues = new Map();
     let material = 0, directLabor = 0, expense = 0;
     for (const row of state.materials) {
       const amount = round(number(row.quantity) * number(row.price), state.rounding);
@@ -32,19 +47,19 @@
           materials.push({quantityId:row.id,name:standard.name,spec:standard.spec,unit:standard.unit,quantity:materialQuantity,installationQuantity:quantity,materialFactor:adjustment.materialFactor,price,amount,source:[row.materialSource,adjustment.materialPercent?`재료 할증 ${adjustment.materialPercent}% (1-1-6)`:''].filter(Boolean).join(' · ')});
           material += amount;
         }
-        if (!row.reviewed) throw Error('적용 조건 확인 필요');
+        // 확인이 끝나지 않았어도 노무비는 계산해 보여 준다. 확인 필요 사항은 errors에 남겨 엑셀 저장만 막는다.
+        if (!row.reviewed) errors.push(standard.name + (row.location ? ` (${row.location})` : '') + ' · 품셈·적용 조건 확인 필요 (공사비 산정에서 체크)');
         const details = standard.labor.map(item => {
-          const matches = state.wages.filter(w => w.trade === item.trade && w.from <= state.project.date && w.to >= state.project.date);
-          if (matches.length !== 1 || !matches[0].source) throw Error(item.trade + ' 적용일 노임단가 확인 필요');
-          const wage = matches[0];
+          const wage = wageFor(state, item.trade, wageIssues);
           const manDays = number(item.base) * quantity / number(standard.baseQuantity) * adjustment.laborFactor;
           const appliedWage=number(wage.price)*adjustment.wageFactor;
-          return {trade:item.trade, base:item.base, manDays, wage:number(wage.price), appliedWage, amount:manDays * appliedWage, source:wage.source};
+          return {trade:item.trade, base:item.base, manDays, wage:number(wage.price), appliedWage, amount:manDays * appliedWage, source:wage.source||'', wageFrom:wage.from, wageTo:wage.to, missingWage:!!wage.missing};
         });
         const amount = round(details.reduce((s,d) => s + d.amount, 0), state.rounding);
         labor.push({...row, standard, quantity, inputQuantity, routeLength:quantity/adjustment.parallel.runs, adjustment, details, amount}); directLabor += amount;
       } catch (e) { errors.push((row.location || '수량 행') + ' · ' + e.message); }
     }
+    errors.push(...wageIssues.values());
     const expenseRows = (state.expenses || []).map(row => ({...row, amount:expenseAmount(row,state.rounding)}));
     expense = expenseRows.reduce((sum,row)=>sum+row.amount,0);
     const totalsByTrade = new Map();

@@ -73,7 +73,7 @@ function startApp(){
  FormData:class {constructor(form){this.fields=form.fields;}get(name){return this.fields[name];}getAll(name){return this.fields[name]||[];}has(name){return Object.hasOwn(this.fields,name);}},
  document:{querySelector:element,addEventListener:(type,handler)=>(listeners[type]??=[]).push(handler)},window:{addEventListener(){}}};
  vm.createContext(context);
- for(const name of ['surcharges.js','rate-sheet.js','standards.js','catalog-ui.js','estimate-ui.js','basis-ui.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../src',name),'utf8'),context);
+ for(const name of ['surcharges.js','rate-sheet.js','standards.js','catalog-ui.js','estimate-ui.js','basis-ui.js','design-xlsx.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../src',name),'utf8'),context);
  const click=(id='',dataset={})=>Promise.all(listeners.click.map(listener=>listener({target:{closest:()=>({id,dataset})}})));
  const submit=(type,fields)=>Promise.all(listeners.submit.map(listener=>listener({preventDefault(){},target:{dataset:{basisForm:type},fields}})));
  const submitForm=(id,fields)=>Promise.all(listeners.submit.map(listener=>listener({preventDefault(){},target:{id,dataset:{},fields}})));
@@ -121,7 +121,7 @@ test('settings apply the offered rate example and accept the earlier wrapped for
  await click('apply-config');
  assert.match(element('#config-status').textContent,/1건을 적용/);
  await click('',{nav:'7'});
- assert.match(element('#view').innerHTML,/간접노무비.*5%/);
+ assert.match(element('#view').innerHTML,/간 접 노 무 비\(나\)[\s\S]*직접노무비 \* 5%/);
 });
 test('settings supply the base adjustment when a standard has no surcharges',async()=>{
  const {element,click}=startApp();
