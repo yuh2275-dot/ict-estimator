@@ -63,3 +63,46 @@ test('unknown or invalid commentary entries are rejected and old rows stay uncha
   const old=state(builtin('rack'),{});delete old.quantities[0].commentary;
   const r=E.calculate(old);assert.deepEqual(r.errors,[]);assert.equal(r.labor[0].adjustment.commentaryFactor,1);
 });
+
+// ---- 4-3 외 전체 절: 원문 [해 설]에서 자동 추출한 조건 ----
+const D=require('../src/commentary-data.js');
+const fs=require('node:fs');
+const generic=(code,name='',spec='')=>({id:'g',code,year:2026,name,spec,verified:true,unit:'m',baseQuantity:1,labor:[{trade:'보통인부',base:1}],adjustments:[{id:'base',name:'기본',factor:1,basis:code+' 본문 표'}]});
+const names=(code)=>S.commentary(generic(code)).groups.map(g=>g.type==='count'?`count:${g.unit}`:g.choices.slice(1).map(c=>c.factor).join(','));
+test('extracted data is generated from the bundled catalog text',()=>{
+  const text=fs.readFileSync(require.resolve('../src/commentary-data.js'),'utf8');
+  require('../src/catalog-data.js');
+  assert.equal(D.sha256,globalThis.standardCatalog.sha256);
+  assert.match(text,/자동 생성: node tools\/extract_commentary\.cjs/);
+  assert.ok(Object.keys(D.sections).length>500);
+});
+test('extracted commentary turns printed rates of other chapters into choices',()=>{
+  assert.deepEqual(names('2-1-1'),['count:열','1.3','0.5,0.8']);          // PVC관: 2열 동시, 나사이음 130%, 철거
+  assert.deepEqual(names('2-1-8-1'),['1.5,2','1.5']);                       // 인력 터파기: 협소·용수 50% 가산, 수중 200%, 장애물 50% 가산
+  assert.deepEqual(names('4-4-1'),['0.8','1.2','1.5','count:열','0.5,0.9']); // 제어용 케이블
+  assert.deepEqual(names('4-2-2'),['0.95','0.3']);                          // 커넥터: 방수처리 미포함 95%, 철거 30%
+  assert.equal(S.commentary(generic('4-3-1','꼬임케이블 포설','구내 4P')).extracted,false); // 수작업 대조한 4-3은 그대로
+});
+test('increments, ranges and rates of a different spec are not turned into automatic factors',()=>{
+  for(const [code,s] of Object.entries(D.sections))for(const g of s.groups)for(const c of g.choices||[]){
+    assert.ok(c.factor>0&&c.factor<=20,`${code} ${g.ref} ${c.name}`);
+    assert.doesNotMatch(c.name,/(당|마다)\s+\d+(\.\d+)?%/,`${code} ${g.ref} ${c.name}`);
+    assert.doesNotMatch(c.name,/\d+P\s*의\s*\d+%|\d+구\s*품셈/,`${code} ${g.ref} ${c.name}`);
+  }
+  const manual=D.sections['8-4-6'].notes.find(n=>n.ref==='⑨');assert.equal(manual.kind,'manual');  // 3대 이상 1대당 80% 가산
+  assert.equal(D.sections['2-1-8-2'].groups.find(g=>g.id==='b1n2'),undefined);                    // 잡재료 인력품의 1%까지
+});
+test('extracted conditions flow through the estimate with their source sentence',()=>{
+  const st=generic('2-1-8-1','인력 터파기','보통토사');
+  const s=state(st,{commentary:{b1n3:'c2'}});s.quantities[0].length=1;
+  const r=E.calculate(s);assert.deepEqual(r.errors,[]);
+  close(r.labor[0].adjustment.laborFactor,2);assert.match(r.labor[0].adjustment.basis,/해설 ③ \(인쇄 47쪽\) · 자동 추출/);
+  const pipe=generic('2-1-1','PVC관','Ø 30㎜ 이하');
+  close(S.commentaryFactors(pipe,{commentary:{b1n2:4}}).factor,.85);
+  assert.throws(()=>S.commentaryFactors(pipe,{commentary:{b1n3:'c9'}}),/허용되지 않은/);
+  const removal=state(pipe,{commentary:{b1n8:'c1'},materialPrice:100});assert.match(E.calculate(removal).errors[0],/철거 행/);
+});
+test('a registered adjustment for the same commentary number hides the extracted group',()=>{
+  const st=generic('4-4-1','제어용 케이블','1C');st.adjustments.push({id:'shield',name:'실드',factor:1.2,basis:'해설 ⑤'});
+  assert.ok(!S.commentary(st).groups.some(g=>g.ref==='⑤'));
+});

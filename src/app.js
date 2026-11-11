@@ -146,7 +146,7 @@ document.addEventListener('click',async e=>{try{const t=e.target.closest('button
   download(workbook,'공사비 산정.xlsx');message('공사비 산정 Excel을 저장했습니다.');
  }
  if(t.id==='security'){
- const entries=performance.getEntriesByType('resource');const allowed=['src/style.css?v=commentary-1','vendor/jszip.min.js','src/engine.js?v=commentary-1','src/standards.js?v=commentary-1','src/surcharges.js?v=commentary-1','src/rate-sheet.js?v=commentary-1','src/catalog-data.js','src/catalog-ui.js?v=commentary-1','src/xlsx.js?v=commentary-1','src/estimate-ui.js?v=commentary-1','src/app.js?v=commentary-1','src/basis-ui.js?v=commentary-1'];
+ const entries=performance.getEntriesByType('resource');const allowed=['src/style.css?v=commentary-2','vendor/jszip.min.js','src/engine.js?v=commentary-2','src/standards.js?v=commentary-2','src/commentary-data.js?v=commentary-2','src/surcharges.js?v=commentary-2','src/rate-sheet.js?v=commentary-2','src/catalog-data.js','src/catalog-ui.js?v=commentary-2','src/xlsx.js?v=commentary-2','src/estimate-ui.js?v=commentary-2','src/app.js?v=commentary-2','src/basis-ui.js?v=commentary-2'];
  const unexpected=entries.filter(r=>!allowed.some(a=>r.name===new URL(a,location.href).href) && !/^page-[0-9]{3}\.webp$/.test(r.name.startsWith(new URL('src/reference/',location.href).href)?r.name.slice(new URL('src/reference/',location.href).href.length):''));
  $('#security-result').textContent=`정적 리소스 ${entries.length}건 / 허용 목록 외 ${unexpected.length}건\nCSP connect-src 'none' 적용\n추가 검증은 README의 브라우저 네트워크 절차를 따르세요.`;
  }

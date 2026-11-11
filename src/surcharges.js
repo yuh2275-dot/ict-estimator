@@ -100,14 +100,45 @@
       install&&/Rack|랙|M\s*D\s*F/i.test(t)&&countGroup('rows','동시 설치 열 수 (MDF·랙)','해설 ⑦',{min:1,step:1,unit:'열',perUnit:true,factor:sequence,hint:'2열 180% · 3열 260% · 4열 340% · 4열 초과 1열당 80% 가산. 수량은 전체 대수(열 수)로 입력합니다.'}),
       work('해설 ⑨',.3,.8)];}}
   };
+  // 4-3-1~4-3-3 외의 절은 tools/extract_commentary.cjs가 원문 [해 설]에서 자동 추출한 데이터(src/commentary-data.js)를 사용한다.
+  let extractedCatalog=null;
+  function extracted(){
+    if(extractedCatalog)return extractedCatalog;
+    extractedCatalog=root.commentaryCatalog||(typeof require==='function'?(()=>{try{return require('./commentary-data.js');}catch{return null;}})():null)||{sections:{}};
+    return extractedCatalog;
+  }
+  const shortText=(text,max=70)=>text.length>max?text.slice(0,max-1)+'…':text;
+  function extractedGroups(code,section){
+    const groups=[];
+    for(const g of section.groups){
+      const basis=`${code} 해설 ${g.ref} (인쇄 ${g.page}쪽) · 자동 추출`;
+      const common={key:`해설 ${g.ref}`,ref:g.ref,text:g.text,page:g.page,extracted:true,partial:g.partial};
+      if(g.type==='count'){
+        const hundred=g.unit==='×100P';
+        groups.push({...common,id:g.id,type:'count',name:`${g.ref} ${hundred?'100P 기준 배수':'동시 설치 '+g.unit+' 수'}`,basis,min:1,step:1,unit:hundred?'×100P':g.unit,perUnit:g.perUnit!==false,factor:sequence,
+          hint:g.perUnit!==false?'2 → 180%, 3 → 260%, 4 → 340%, 이후 1당 80% 가산. 수량은 전체 합계로 입력하며 1단위당 (비율 ÷ 개수)를 적용합니다.':'2 → 200P 180%, 3 → 300P 260%, 4 → 400P 340%, 이후 100P당 80% 가산'});
+        continue;
+      }
+      groups.push({...common,id:g.id,type:'choice',demolition:g.demolition,name:`${g.ref} ${shortText(g.text,40)}`,basis,choices:[none('해당 없음'),...g.choices.map(c=>choice(c.id,c.name,c.factor))]});
+    }
+    return groups;
+  }
   function commentary(standard){
-    const rule=Number(standard?.year)===2026&&commentaryRules[standard.code];
-    if(!rule)return {groups:[],notes:[],page:null};
-    const text=`${standard.name||''} ${standard.spec||''}`.replace(/Patch\s*Panel\s*및\s*성단\s*등/i,''); // 4-3-3 절 제목(Patch Panel 및 성단 등)은 행 구분에 쓰지 않는다.
-    // 품셈에 같은 해설 번호의 계수가 이미 등록되어 있으면 중복 적용하지 않도록 그룹을 숨긴다.
+    if(Number(standard?.year)!==2026)return {groups:[],notes:[],page:null,extracted:false};
     const registered=new Set((standard.adjustments||[]).map(a=>String(a.basis||'').trim()));
-    const groups=rule.groups(text).filter(g=>g&&!registered.has(g.basis)).map(g=>({...g,basis:`${standard.code} ${g.basis} (인쇄 ${rule.page}쪽)`}));
-    return {groups,notes:rule.notes,page:rule.page};
+    const rule=commentaryRules[standard.code];
+    if(rule){
+      const text=`${standard.name||''} ${standard.spec||''}`.replace(/Patch\s*Panel\s*및\s*성단\s*등/i,''); // 4-3-3 절 제목(Patch Panel 및 성단 등)은 행 구분에 쓰지 않는다.
+      // 품셈에 같은 해설 번호의 계수가 이미 등록되어 있으면 중복 적용하지 않도록 그룹을 숨긴다.
+      const groups=rule.groups(text).filter(g=>g&&!registered.has(g.basis)).map(g=>({...g,basis:`${standard.code} ${g.basis} (인쇄 ${rule.page}쪽)`}));
+      return {groups,notes:rule.notes,page:rule.page,extracted:false};
+    }
+    const section=extracted().sections?.[standard.code];
+    if(!section)return {groups:[],notes:[],page:null,extracted:false};
+    const groups=extractedGroups(standard.code,section).filter(g=>!registered.has(g.key));
+    const notes=section.notes.map(n=>`${n.ref} ${n.kind==='common'?'[공통 할증 화면에서 선택] ':n.kind==='manual'?'[비율 확인 후 해설 계수 직접입력] ':''}${n.text}`);
+    const partial=section.groups.filter(g=>g.partial).map(g=>`${g.ref} [일부 비율은 자동 계수에서 제외 · 해설 계수 직접입력] ${g.text}`);
+    return {groups,notes:[...partial,...notes],page:(section.groups[0]||section.notes[0])?.page??null,extracted:true};
   }
   function commentaryFactors(standard,row){
     const {groups}=commentary(standard),values=row.commentary??{};
