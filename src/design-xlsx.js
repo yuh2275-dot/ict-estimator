@@ -223,74 +223,83 @@
     ss.set('A6','합                    계',S.totalLabel).merge('A6:D6',S.totalLabel).set('E6',result.material,S.totalMoney,'SUM(E5:E5)').set('F6',null,S.totalLabel).set('G6',result.directLabor,S.totalMoney,'SUM(G5:G5)').set('H6',null,S.totalLabel)
       .set('I6',result.expense,S.totalMoney,'SUM(I5:I5)').set('J6',result.material+result.directLabor+result.expense,S.totalMoney,'SUM(J5:J5)').set('K6',null,S.totalLabel);
 
-    // ---------- 원가계산서 ----------
-    const cs=sheet('원가계산서').widths([7,9,26,16,44,30]);
+    // ---------- 원가계산서 (예시 양식: 재료비(A)·노무비(B)·경비(C) → 순공사원가(D) → 일반관리비(E)·이윤(F) → 총원가(G) → 부가가치세(H) → 총금액) ----------
+    const cs=sheet('원가계산서').widths([7,7,28,16,30,34]);
     cs.set('A1','공  사  원  가  계  산  서',S.title).merge('A1:F1').height(1,32);
     cs.set('A3',`공사명 : ${title}`,S.label).merge('A3:F3');
-    cs.set('A4','비    목',S.head).merge('A4:C4',S.head).set('D4','금     액',S.head).set('E4','산 출 근 거',S.head).set('F4','비  고',S.head);
+    cs.set('A4','비    목',S.head).merge('A4:C4',S.head).set('D4','금     액',S.head).set('E4','구  성  비',S.head).set('F4','비  고',S.head);
     const costs=new Map(result.costs.map(c=>[c.id,c]));
     const kind=rule=>/간접\s*재료/.test(rule.name)?'material':/간접\s*노무/.test(rule.name)?'labor':/일반\s*관리/.test(rule.name)?'overhead':/이\s*윤/.test(rule.name)?'profit':/부가\s*가치/.test(rule.name)?'vat':'expense';
     const rules=state.rates.map(rule=>({rule,kind:kind(rule),cost:costs.get(rule.id)}));
-    const ref={},label={material:'직접재료비',directLabor:'직접노무비',expense:'직접경비'};
-    const groupIds={A:['material',...rules.filter(x=>x.kind==='material').map(x=>x.rule.id)],B:['directLabor',...rules.filter(x=>x.kind==='labor').map(x=>x.rule.id)],
-      C:[...(result.expenseRows.length?['expense']:[]),...rules.filter(x=>x.kind==='expense').map(x=>x.rule.id)]};
-    // 기준 항목이 한 구분을 모두 포함하면 (A)·(B)·(C)·(D)로 줄여 쓴다.
+    const of=k=>rules.filter(x=>x.kind===k);
+    const spaced=name=>{const t=String(name).replace(/\s+/g,'');return t.length<=10?[...t].join(' '):t;};
+    const SUB='가나다라마바사아자차카타파하';
+    const ref={},label={material:'직접재료비',directLabor:'직접노무비',expense:'직접경비'},letterOf={};
+    const groupIds={A:['material',...of('material').map(x=>x.rule.id)],B:['directLabor',...of('labor').map(x=>x.rule.id)],
+      C:[...(result.expenseRows.length?['expense']:[]),...of('expense').map(x=>x.rule.id)]};
+    const after=[...of('overhead'),...of('profit')];
+    // 기준 항목이 한 구분을 모두 포함하면 (A)·(B)·(C)·(D)·(G)와 행 기호로 줄여 쓴다.
     const baseText=bases=>{
-      const rest=new Set(bases),parts=[];
-      const all=['A','B','C'].filter(k=>groupIds[k].length&&groupIds[k].every(id=>rest.has(id)));
-      if(all.length===3&&['A','B','C'].every(k=>groupIds[k].length)||all.length===2&&!groupIds.C.length&&all.includes('A')&&all.includes('B')){parts.push('D');for(const k of all)groupIds[k].forEach(id=>rest.delete(id));}
-      else for(const k of all){parts.push(k);groupIds[k].forEach(id=>rest.delete(id));}
-      for(const id of bases)if(rest.has(id))parts.push(label[id]||id);
-      return parts.length>1||/^[A-D]$/.test(parts[0]||'')?`(${parts.join(' + ')})`:parts[0]||'';
+      const rest=new Set(bases),parts=[],take=ids=>ids.forEach(id=>rest.delete(id));
+      const has=ids=>ids.length&&ids.every(id=>rest.has(id));
+      const groups=['A','B','C'].filter(k=>groupIds[k].length);
+      const fullD=groups.length&&groups.every(k=>has(groupIds[k]));
+      if(fullD&&after.length&&after.every(x=>rest.has(x.rule.id))){parts.push('G');groups.forEach(k=>take(groupIds[k]));take(after.map(x=>x.rule.id));}
+      else if(fullD&&groups.length>1){parts.push('D');groups.forEach(k=>take(groupIds[k]));}
+      else for(const k of groups)if(has(groupIds[k])&&groupIds[k].length>1||k==='A'&&has(groupIds[k])&&bases.length>1){parts.push(k);take(groupIds[k]);}
+      for(const id of bases)if(rest.has(id))parts.push(letterOf[id]||label[id]||id);
+      const letters=parts.every(x=>/^[A-H]$/.test(x));
+      return letters||parts.length>1?`(${parts.join(' + ')})`:parts[0]||'';
     };
     const pending=[];
     const ruleRow=(row,item)=>{
       const {rule,cost}=item;ref[rule.id]='D'+row;label[rule.id]=rule.name;
       pending.push(()=>{
-        let formula='0',text=`적용 제외`;
-        if(rule.enabled&&rule.method==='fixed'){formula=`${RD}(${num(Number(rule.fixedAmount))},0)`;text='금액 직접입력';}
-        else if(rule.enabled){
-          const bases=rule.bases.map(b=>ref[b]||'0');
-          formula=`${RD}((${bases.join('+')})*${num(Number(rule.rate))}%${Number(rule.addition??0)?'+'+num(Number(rule.addition)):''},0)`;
-          text=`${baseText(rule.bases)} × ${num(Number(rule.rate))}%${Number(rule.addition??0)?` + ${Number(rule.addition).toLocaleString('ko-KR')}원`:''}`;
-        }
-        cs.set('D'+row,cost?.amount??0,S.money,formula).set('E'+row,text).set('F'+row,rule.source||'');
+        const rate=`${baseText(rule.bases||[])} * ${num(Number(rule.rate))}%${Number(rule.addition??0)?` + ${Number(rule.addition).toLocaleString('ko-KR')}원`:''}`;
+        if(!rule.enabled){cs.set('D'+row,null,S.money).set('E'+row,rule.method==='fixed'?'금액 직접입력':rate,S.center).set('F'+row,['적용 제외',rule.source].filter(Boolean).join(' · '));return;}
+        if(rule.method==='fixed'){cs.set('D'+row,cost?.amount??0,S.money,`${RD}(${num(Number(rule.fixedAmount))},0)`).set('E'+row,'금액 직접입력',S.center).set('F'+row,rule.source||'');return;}
+        const bases=rule.bases.map(b=>ref[b]||'0');
+        cs.set('D'+row,cost?.amount??0,S.money,`${RD}((${bases.join('+')})*${num(Number(rule.rate))}%${Number(rule.addition??0)?'+'+num(Number(rule.addition)):''},0)`).set('E'+row,rate,S.center).set('F'+row,rule.source||'');
       });
     };
     r=5;const top=r;
-    const block=(code,head,direct,items)=>{
-      const start=r;
-      if(direct){cs.set('C'+r,direct.name,S.center).set('D'+r,direct.value,S.money,direct.formula).set('E'+r,direct.text||'').set('F'+r,'');if(direct.key)ref[direct.key]='D'+r;r++;}
-      for(const item of items){cs.set('C'+r,item.rule.name,S.center);ruleRow(r,item);r++;}
+    const block=(code,head,direct,optional,items)=>{
+      const start=r;let n=0;const mark=()=>`(${SUB[n++]||n})`;
+      const multi=(direct?1:0)+items.length+(optional&&!items.length?1:0)>1;
+      if(direct){cs.set('C'+r,spaced(direct.name)+(multi?mark():''),S.center).set('D'+r,direct.value,S.money,direct.formula).set('E'+r,'',S.center).set('F'+r,'');if(direct.key)ref[direct.key]='D'+r;r++;}
+      for(const item of items){cs.set('C'+r,spaced(item.rule.name)+(multi?mark():''),S.center);ruleRow(r,item);r++;}
+      if(optional&&!items.length){cs.set('C'+r,spaced(optional),S.center).set('D'+r,null,S.money).set('E'+r,'',S.center).set('F'+r,'');r++;}
       cs.set('C'+r,'소    계',S.totalLabel).set('D'+r,0,S.totalMoney,r>start?`SUM(D${start}:D${r-1})`:'0').set('E'+r,null,S.totalLabel).set('F'+r,null,S.totalLabel);
       const sub=r;cs.set('B'+start,head,S.center).merge(`B${start}:B${r}`,S.center);r++;
       return {code,sub};
     };
     const blocks=[
-      block('A','재료비\n(A)',{name:'직  접  재  료  비',value:result.material,formula:'집계표!E6',key:'material'},rules.filter(x=>x.kind==='material')),
-      block('B','노무비\n(B)',{name:'직  접  노  무  비',value:result.directLabor,formula:'집계표!G6',key:'directLabor'},rules.filter(x=>x.kind==='labor')),
-      block('C','경비\n(C)',result.expenseRows.length?{name:'직 접 경 비 (기계·기타)',value:result.expense,formula:'집계표!I6',key:'expense'}:null,rules.filter(x=>x.kind==='expense'))
+      block('A','재\n료\n비\n(A)',{name:'직접재료비',value:result.material,formula:'집계표!E6',key:'material'},'간접재료비',of('material')),
+      block('B','노\n무\n비\n(B)',{name:'직접노무비',value:result.directLabor,formula:'집계표!G6',key:'directLabor'},'간접노무비',of('labor')),
+      block('C','경\n비\n(C)',result.expenseRows.length?{name:'직접경비',value:result.expense,formula:'집계표!I6',key:'expense'}:null,null,of('expense'))
     ];
-    ref.expense??='0';
-    cs.set('A'+top,'순\n공\n사\n원\n가',S.center).merge(`A${top}:A${r-1}`,S.center);
-    const sum=(rows)=>rows.reduce((n,row)=>n+row,0);
-    const costOf=list=>sum(list.map(x=>x.cost?.amount||0));
-    const subValue={A:result.material+costOf(rules.filter(x=>x.kind==='material')),B:result.directLabor+costOf(rules.filter(x=>x.kind==='labor')),C:result.expense+costOf(rules.filter(x=>x.kind==='expense'))};
+    ref.expense??='0';ref.material??='0';ref.directLabor??='0';
+    cs.set('A'+top,'순\n\n공\n\n사\n\n원\n\n가',S.center).merge(`A${top}:A${r-1}`,S.center);
+    const costOf=list=>list.reduce((n,x)=>n+(x.rule.enabled?x.cost?.amount||0:0),0);
+    const subValue={A:result.material+costOf(of('material')),B:result.directLabor+costOf(of('labor')),C:result.expense+costOf(of('expense'))};
     for(const b of blocks)cs.set('D'+b.sub,subValue[b.code],S.totalMoney,cs.cells.get('D'+b.sub).formula);
-    const net=r,netValue=subValue.A+subValue.B+subValue.C;
-    const line=(name,value,formula,text='',style=S.totalMoney)=>{cs.set('A'+r,name,style===S.totalMoney?S.totalLabel:S.center).merge(`A${r}:C${r}`,style===S.totalMoney?S.totalLabel:S.center).set('D'+r,value,style,formula).set('E'+r,text,style===S.totalMoney?S.totalLabel:S.text).set('F'+r,'',style===S.totalMoney?S.totalLabel:S.text);return r++;};
-    line('순 공 사 원 가 (D)',netValue,blocks.map(b=>'D'+b.sub).join('+'),'(A) + (B) + (C)');
-    const after=rules.filter(x=>x.kind==='overhead'||x.kind==='profit');
-    const afterRows=[];
-    for(const item of after){cs.set('A'+r,item.rule.name,S.center).merge(`A${r}:C${r}`,S.center);ruleRow(r,item);afterRows.push(r);r++;}
-    const totalCost=line('총   원   가 (G)',netValue+costOf(after),[`D${net}`,...afterRows.map(x=>'D'+x)].join('+'),'순공사원가 + 일반관리비 + 이윤');
-    const vatRows=[];
-    for(const item of rules.filter(x=>x.kind==='vat')){cs.set('A'+r,item.rule.name,S.center).merge(`A${r}:C${r}`,S.center);ruleRow(r,item);vatRows.push(r);r++;}
-    const grandRow=line('합       계',result.total,[`D${totalCost}`,...vatRows.map(x=>'D'+x)].join('+'),'총원가 + 부가가치세 (앱 계산 총액과 같음)');
-    const contract=line('총   금   액',Math.floor(result.total/1000)*1000,`ROUNDDOWN(D${grandRow},-3)`,'천원 미만 절사');
-    ref.material??='0';ref.directLabor??='0';
+    const line=(name,value,formula,text,bold)=>{
+      const ls=bold?S.totalLabel:S.center;
+      cs.set('A'+r,name,ls).merge(`A${r}:C${r}`,ls).set('D'+r,value,bold?S.totalMoney:S.money,formula).set('E'+r,text,bold?S.totalLabel:S.center).set('F'+r,'',bold?S.totalLabel:S.text);return r++;
+    };
+    const net=line('순 공 사 원 가 (D)',subValue.A+subValue.B+subValue.C,blocks.map(b=>'D'+b.sub).join('+'),'(A) + (B) + (C)',true);
+    const letters='EFGHIJKLMNOP';let li=0;
+    const afterRows=after.map(item=>{const letter=letters[li++];letterOf[item.rule.id]=letter;cs.set('A'+r,`${spaced(item.rule.name)} (${letter})`,S.center).merge(`A${r}:C${r}`,S.center);ruleRow(r,item);return r++;});
+    const gLetter=letters[li++];
+    const totalCost=line(`총   원   가 (${gLetter})`,subValue.A+subValue.B+subValue.C+costOf(after),[`D${net}`,...afterRows.map(x=>'D'+x)].join('+'),`(${['D',...after.map(x=>letterOf[x.rule.id])].join(') + (')})`,true);
+    for(const x of after)letterOf[x.rule.id]=letterOf[x.rule.id];
+    const vatRows=of('vat').map(item=>{const letter=letters[li++];letterOf[item.rule.id]=letter;cs.set('A'+r,`${spaced(item.rule.name)} (${letter})`,S.center).merge(`A${r}:C${r}`,S.center);ruleRow(r,item);return r++;});
+    const beforeCut=result.total;
+    const contract=line('총   금   액',Math.floor(beforeCut/1000)*1000,`ROUNDDOWN(${[`D${totalCost}`,...vatRows.map(x=>'D'+x)].join('+')},-3)`,'',true);
+    cs.set('F'+contract,`천원 미만 절사 (절사 전 ${beforeCut.toLocaleString('ko-KR')}원)`,S.totalLabel);
     pending.forEach(f=>f());
     if(Object.values(ref).some(v=>v===undefined))throw Error('제비율 참조 오류');
+    for(let k=4;k<r;k++)cs.height(k,22);
 
     // ---------- 표지 ----------
     const cover=sheet('표지').widths([7,10,7,10,7,10,12,12,12,12]);
