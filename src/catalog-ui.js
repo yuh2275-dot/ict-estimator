@@ -130,5 +130,10 @@
       if(t.id==='catalog-zoom')t.classList.toggle('zoomed');
     }catch(error){host.message(error.message);}
   });
-  root.CatalogUI={render,connect:callbacks=>{host=callbacks;}};
+  root.CatalogUI={render,connect:callbacks=>{host=callbacks;},openDraft(id){
+    const draft=drafts.get(id);
+    if(!draft)throw Error('품셈 후보를 찾을 수 없습니다.');
+    selected=draft.code;
+    startEditor(draft);
+  }};
 })(globalThis);

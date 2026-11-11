@@ -43,7 +43,8 @@
   const rateCells=['D9','D11','D12','D13','D14','D15','D16','D17','D18','D19','D22','D23','D25'];
   async function write(template,state,result){
     if(result.errors.length) throw Error('검토 항목을 먼저 해결하세요.');
-    if(state.materials.length>9 || result.labor.length>20) throw Error('빈 양식 입력 공간 초과 (재료 9행, 공종 20행)');
+    if(result.expenseRows?.length)throw Error('기계·기타경비가 포함된 작업은 공사원가계산의 엑셀 저장을 사용하세요.');
+    if(result.materials.length>9 || result.labor.length>20) throw Error('빈 양식 입력 공간 초과 (재료 9행, 공종 20행)');
     const sheets=template.sheets.map(s=>({...s})),changes=[];
     const set=(name,cell,value,formula)=>{
       const s=sheets.find(s=>s.name===name); if(!s) throw Error('필수 시트 없음 · '+name);
@@ -57,7 +58,7 @@
     set('집계표','A5',state.project.name); set('자재단가산출기초','A2','',"원가계산서!A3");
     const rounding=state.rounding==='round'?'ROUND':'ROUNDDOWN';
     for(let i=0;i<9;i++){
-      const r=8+i,m=state.materials[i];
+      const r=8+i,m=result.materials[i];
       for(const [col,val] of Object.entries({A:m?.name||'',B:m?.spec||'',C:m?Number(m.quantity):'',D:m?.unit||'',E:m?Number(m.price):''})) set('설계내역서',col+r,val);
       set('설계내역서','F'+r,'',`IF(C${r}="","",${rounding}(C${r}*E${r},0))`);
       const j=4+i;
@@ -120,5 +121,46 @@
     zip.file('xl/workbook.xml',wb);
     return {blob:await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),changes};
   }
-  root.ExcelIO={open,write,patch,rateCells};
+  async function writeEstimate(state,result){
+    if(result.errors.length)throw Error('공사원가계산의 검토 항목을 먼저 해결하세요.');
+    const linkedMaterials=new Map(result.materials.filter(m=>m.quantityId).map(m=>[m.quantityId,m]));
+    const detail=result.labor.map(row=>{
+      const material=linkedMaterials.get(row.id)?.amount||0;
+      return [row.standard.code,row.standard.name,row.standard.spec,row.standard.unit,row.quantity,material,row.amount,0,material+row.amount,row.adjustment.basis];
+    });
+    for(const m of result.materials.filter(m=>!m.quantityId))detail.push(['',m.name,m.spec,m.unit,Number(m.quantity),m.amount,0,0,m.amount,m.source]);
+    for(const row of result.expenseRows)detail.push(['',row.name,row.spec,row.kind==='machine'?'시간':'식',row.kind==='machine'?row.hours:1,0,0,row.amount,row.amount,row.source]);
+    const rounding=result.directLabor-result.labor.reduce((sum,row)=>sum+row.amount,0);
+    if(rounding)detail.push(['','노무비 원 단위 조정','','',0,0,rounding,0,rounding,'직종별 공량 합산 후 원 단위 처리']);
+    const sheets=[
+      ['공사원가계산서',[['비목','금액 (원)','요율 (%)','산정금액 (원)','산출 근거'],
+        ['재료비',result.material],['직접노무비',result.directLabor],
+        ...result.expenseRows.map(e=>[e.name,e.amount,'','',e.kind==='machine'?[`${e.hours}시간 × ${e.unitPrice}원`,e.source].filter(Boolean).join(' · '):e.source]),
+        ...result.costs.map(c=>[c.name,c.amount,c.enabled?Number(c.rate):0,c.base,c.enabled?c.source:`적용 제외 · ${c.source}`]),
+        ['총공사금액',result.total],[],['공사명',state.project.name],['적용 기준일',state.project.date]]],
+      ['산출내역서',[['품셈 번호','공종·항목','규격','단위','수량','재료비','노무비','경비','합계','산출 근거'],...detail]],
+      ['표준일위대가',[['품셈 번호','공종','규격','수량 단위','직종','기준수량','기본품','할증 계수','노임단가','단위당 노무비','단위당 재료 단가','근거'],...result.labor.flatMap(row=>row.details.map(d=>[
+        row.standard.code,row.standard.name,row.standard.spec,row.standard.unit,d.trade,row.standard.baseQuantity,d.base,row.adjustment.factor,d.wage,d.base*row.adjustment.factor*d.wage/row.standard.baseQuantity,linkedMaterials.get(row.id)?.price??'',row.adjustment.basis]))]],
+      ['자재단가표',[['품명','규격','단위','수량','단가','금액','단가 출처'],...result.materials.map(m=>[m.name,m.spec,m.unit,Number(m.quantity),Number(m.price),m.amount,m.source])]],
+      ['노임단가표',[['직종','일 노임 (원)','적용 시작일','적용 종료일','근거'],...state.wages.map(w=>[w.trade,Number(w.price),w.from,w.to,w.source])]]
+    ];
+    const zip=new JSZip();
+    const sheetNS='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+    const officeRel='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+    const packageRel='http://schemas.openxmlformats.org/package/2006/relationships';
+    zip.file('[Content_Types].xml',`<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`);
+    zip.file('_rels/.rels',`<Relationships xmlns="${packageRel}"><Relationship Id="rId1" Type="${officeRel}/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+    zip.file('xl/workbook.xml',`<workbook xmlns="${sheetNS}" xmlns:r="${officeRel}"><bookViews><workbookView activeTab="0"/></bookViews><sheets>${sheets.map(([name],i)=>`<sheet name="${escape(name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`);
+    zip.file('xl/_rels/workbook.xml.rels',`<Relationships xmlns="${packageRel}">${sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="${officeRel}/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}</Relationships>`);
+    for(const [i,[,rows]] of sheets.entries()){
+      const data=rows.map((row,j)=>`<row r="${j+1}">${row.map((value,col)=>{
+        const ref=String.fromCharCode(65+col)+(j+1);
+        if(typeof value==='number'&&Number.isFinite(value))return `<c r="${ref}"><v>${value}</v></c>`;
+        return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${escape(String(value??'').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,''))}</t></is></c>`;
+      }).join('')}</row>`).join('');
+      zip.file(`xl/worksheets/sheet${i+1}.xml`,`<worksheet xmlns="${sheetNS}"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="${rows[0].length}" width="23" customWidth="1"/></cols><sheetData>${data}</sheetData></worksheet>`);
+    }
+    return zip.generateAsync({type:'blob',compression:'DEFLATE',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  }
+  root.ExcelIO={open,write,writeEstimate,patch,rateCells};
 })(globalThis);

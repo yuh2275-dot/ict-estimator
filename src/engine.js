@@ -6,6 +6,9 @@
     return n;
   };
   const round = (n, mode = 'floor') => mode === 'round' ? Math.round(n + Number.EPSILON) : Math.floor(n + 1e-8);
+  function expenseAmount(row, rounding) {
+    return round(row.kind === 'machine' ? number(row.hours) * number(row.unitPrice) : number(row.amount), rounding);
+  }
   function calculate(state) {
     const errors = [], labor = [], materials = [], costs = [];
     let material = 0, directLabor = 0, expense = 0;
@@ -18,8 +21,14 @@
         const standard = state.standards.find(s => s.id === row.standardId);
         if (!standard || !standard.verified) throw Error('기준자료 미등록');
         if (standard.year !== Number(state.project.year)) throw Error('품셈 기준연도 불일치');
-        if (!row.reviewed) throw Error('적용 조건 확인 필요');
         const quantity = number(row.length) * number(row.count);
+        if (row.materialPrice != null) {
+          const price = number(row.materialPrice);
+          const amount = round(quantity * price, state.rounding);
+          materials.push({quantityId:row.id,name:standard.name,spec:standard.spec,unit:standard.unit,quantity,price,amount,source:row.materialSource||''});
+          material += amount;
+        }
+        if (!row.reviewed) throw Error('적용 조건 확인 필요');
         const adjustment = standard.adjustments.find(a => a.id === row.adjustment);
         if (!adjustment) throw Error('허용되지 않은 할증');
         const details = standard.labor.map(item => {
@@ -33,6 +42,8 @@
         labor.push({...row, standard, quantity, adjustment, details, amount}); directLabor += amount;
       } catch (e) { errors.push((row.location || '수량 행') + ' · ' + e.message); }
     }
+    const expenseRows = (state.expenses || []).map(row => ({...row, amount:expenseAmount(row,state.rounding)}));
+    expense = expenseRows.reduce((sum,row)=>sum+row.amount,0);
     const totalsByTrade = new Map();
     for (const row of labor) for (const detail of row.details) {
       totalsByTrade.set(detail.trade, (totalsByTrade.get(detail.trade) || 0) + detail.amount);
@@ -54,8 +65,8 @@
       } catch(e) { errors.push(rule.name + ' · ' + e.message); }
     }
     if (!state.ratesReviewed) errors.push('공사금액·기간·종류·기관별 제비율 검토 필요');
-    return {materials,labor,costs,material,directLabor,expense,total:material+directLabor+expense+costs.reduce((s,c)=>s+c.amount,0),errors};
+    return {materials,labor,costs,expenseRows,material,directLabor,expense,total:material+directLabor+expense+costs.reduce((s,c)=>s+c.amount,0),errors};
   }
-  root.Estimator = {number,round,calculate};
+  root.Estimator = {number,round,calculate,expenseAmount};
   if (typeof module !== 'undefined') module.exports = root.Estimator;
 })(globalThis);

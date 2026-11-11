@@ -72,7 +72,7 @@ function startApp(){
  const context={standardCatalog:data,structuredClone,Estimator:E,crypto:require('node:crypto').webcrypto,
  document:{querySelector:element,addEventListener:(type,handler)=>(listeners[type]??=[]).push(handler)},window:{addEventListener(){}}};
  vm.createContext(context);
- for(const name of ['standards.js','catalog-ui.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../src',name),'utf8'),context);
+ for(const name of ['standards.js','catalog-ui.js','estimate-ui.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../src',name),'utf8'),context);
  const click=(id='',dataset={})=>Promise.all(listeners.click.map(listener=>listener({target:{closest:()=>({id,dataset})}})));
  return {element,click};
 }
