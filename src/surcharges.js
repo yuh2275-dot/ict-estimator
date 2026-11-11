@@ -59,6 +59,16 @@
   const materialNames=['옥내 통신선·케이블(광 포함)','옥내 합성수지전선관·금속관','옥내 트레이·덕트·레이스웨이','옥외 통신선·케이블(광 포함)','옥외 지하관로·직매케이블(광 포함)','옥외 합성수지전선관(파형관 포함)','옥외 합성수지관 소켓','옥외 점퍼선','옥외 열수축관','옥외 25회선 접속자(커넥터 포함)','옥외 조가선·지지선','옥외 가공선로 철물류 100개 미만','옥외 가공선로 철물류 100~199개','옥외 가공선로 철물류 200~499개','옥외 가공선로 철물류 500~999개','옥외 가공선로 철물류 1,000개 이상'];
   [7.5,10,5,3,3,3,10,5,5,2,4,3,2.5,2,1.5,1].forEach((max,i)=>add('material','material_'+i,`${materialNames[i]} (최대 ${max}%)`,null,{input:'percent',max,target:'material',note:'재료 수량에만 적용합니다. 시공수량·노무비는 늘리지 않습니다. 철거손실률과 구분하세요.'}));
   const finite=v=>{if(v===''||v==null||!Number.isFinite(Number(v))||Number(v)<0||Number(v)>1e12)throw Error('할증 입력값을 확인하세요.');return Number(v);};
+  function supportsParallel(standard){return standard?.code==='4-3-1'&&Number(standard.year)===2026&&standard.unit==='m';}
+  function parallel(standard,row){
+    const runs=row.parallelRuns===undefined?1:finite(row.parallelRuns);
+    const mode=row.parallelQuantityMode??'total';
+    if(!Number.isInteger(runs)||runs<1||runs>1e6)throw Error('동시포설 열 수는 1 이상의 정수로 입력하세요.');
+    if(!['total','route'].includes(mode))throw Error('동시포설 수량 기준을 확인하세요.');
+    if((runs!==1||mode!=='total')&&!supportsParallel(standard))throw Error('이 동시포설 조건은 2026년 4-3-1 꼬임케이블 포설(m)에만 적용합니다.');
+    const bundleFactor=(10+8*(runs-1))/10;
+    return {runs,mode,bundleFactor,perCableFactor:bundleFactor/runs,quantityMultiplier:mode==='route'?runs:1};
+  }
   function resolve(selection){
     const item=items.find(i=>i.id===selection.id);
     if(!item)throw Error('등록되지 않은 공통 할증');
@@ -83,6 +93,7 @@
     return {...item,rate,value:selection.value,basis:[`${item.code} (인쇄 ${item.page-30}쪽)`,selection.note].filter(Boolean).join(' · ')};
   }
   function combined(standard,row){
+    const parallelWork=parallel(standard,row);
     let special=standard.adjustments.find(a=>a.id===row.adjustment);
     if(row.adjustment==='custom'){
       const factor=finite(row.standardFactor);
@@ -100,10 +111,11 @@
     const laborPercent=selected.filter(i=>i.target==='labor').reduce((n,i)=>n+i.rate,0);
     const materialPercent=selected.filter(i=>i.target==='material').reduce((n,i)=>n+i.rate,0);
     const wagePercent=selected.reduce((n,i)=>n+(i.target==='wage'?i.rate:0)+(i.wageRate||0),0);
-    const laborFactor=finite(special.factor)*(1+laborPercent/100),wageFactor=1+wagePercent/100;
-    return {id:special.id,name:[special.name,...selected.map(i=>i.name)].join(' / '),factor:laborFactor*wageFactor,laborFactor,wageFactor,laborPercent,wagePercent,materialPercent,materialFactor:1+materialPercent/100,specialFactor:Number(special.factor),selected,
-      basis:[special.basis,...selected.map(i=>`${i.name} ${i.rate}%${i.wageRate?` + 노임 ${i.wageRate}%`:''} · ${i.basis}`),`공종계수 ${special.factor} × 품(1 + ${laborPercent}%) × 노임(1 + ${wagePercent}%)`].filter(Boolean).join(' / ')};
+    const laborFactor=finite(special.factor)*parallelWork.perCableFactor*(1+laborPercent/100),wageFactor=1+wagePercent/100;
+    const parallelBasis=parallelWork.runs>1?`4-3-1 해설 ⑧ (인쇄 90쪽): ${parallelWork.runs}열 동시포설, 경로길이 기준 ×${parallelWork.bundleFactor} / 케이블 총길이 기준 ×(${parallelWork.bundleFactor}÷${parallelWork.runs}); 입력 기준: ${parallelWork.mode==='route'?'1열 경로길이':'케이블 총길이'}`:'';
+    return {id:special.id,name:[special.name,parallelWork.runs>1?`${parallelWork.runs}열 동시포설`:'',...selected.map(i=>i.name)].filter(Boolean).join(' / '),factor:laborFactor*wageFactor,laborFactor,wageFactor,laborPercent,wagePercent,materialPercent,materialFactor:1+materialPercent/100,specialFactor:Number(special.factor),selected,parallel:parallelWork,
+      basis:[special.basis,parallelBasis,...selected.map(i=>`${i.name} ${i.rate}%${i.wageRate?` + 노임 ${i.wageRate}%`:''} · ${i.basis}`),`공종계수 ${special.factor}${parallelWork.runs>1?` × 동시포설(${parallelWork.bundleFactor}÷${parallelWork.runs})`:''} × 품(1 + ${laborPercent}%) × 노임(1 + ${wagePercent}%)`].filter(Boolean).join(' / ')};
   }
-  root.Surcharges={groups,items,resolve,combined};
+  root.Surcharges={groups,items,resolve,combined,parallel,supportsParallel};
   if(typeof module!=='undefined')module.exports=root.Surcharges;
 })(globalThis);

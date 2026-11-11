@@ -2,18 +2,33 @@
   'use strict';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money = value => value.toLocaleString('ko-KR');
-  const newLine = () => ({standardId:'',length:1,count:1,adjustment:'base',surcharges:[],reviewed:false,materialPrice:null});
+  const newLine = () => ({standardId:'',length:1,count:1,adjustment:'base',surcharges:[],parallelRuns:1,parallelQuantityMode:'total',reviewed:false,materialPrice:null});
   let line = newLine(), lineIndex = -1;
   let quantityInput = null;
   let expenseEditor = null;
   let search = {mode:'related',term:''};
   let host;
   let surchargeGroup='terrain';
+  function factorSummary(a){return `${a.parallel.runs>1?'케이블 총길이 기준 · ':''}공종 해설 ×${a.specialFactor}${a.parallel.runs>1?` × 동시포설 (${a.parallel.bundleFactor} ÷ ${a.parallel.runs})`:''} × 품 (1 + ${Number(a.laborPercent.toFixed(4))}%) × 노임 (1 + ${a.wagePercent}%) = 노무비 ×${Number(a.factor.toFixed(6))} · 재료 ×${a.materialFactor}`;}
+  function parallelSummary(selected){
+    try{
+      const p=Surcharges.parallel(selected,line),input=Estimator.number(quantityInput??line.length*line.count),total=input*p.quantityMultiplier;
+      return `${p.runs}열 동시포설: 1열 경로길이 ${money(total/p.runs)}m / 케이블 총길이 ${money(total)}m. 노무 품은 경로길이 기준 ${Number((p.bundleFactor*100).toFixed(2))}% (×${p.bundleFactor}), 총길이 기준 ×${Number(p.perCableFactor.toFixed(6))}로 계산합니다.`;
+    }catch(error){return error.message;}
+  }
+  function parallelEditor(selected){
+    if(!Surcharges.supportsParallel(selected))return '';
+    return `<fieldset class="surcharge-editor"><legend>꼬임케이블 동시포설 · UTP / STP / FTP 등</legend><div class="estimate-fields">
+      <label class="field">동시포설 열 수<input name="parallelRuns" type="number" min="1" max="1000000" step="1" required value="${esc(line.parallelRuns??1)}"></label>
+      <label class="field">수량 입력 기준<select name="parallelQuantityMode"><option value="total">케이블 총길이</option><option value="route" ${line.parallelQuantityMode==='route'?'selected':''}>1열 경로길이</option></select></label></div>
+      <p>1열 100% · 2열 180% · 3열 260% · 4열 340% · 4열 초과는 1열당 80% 가산. <a href="src/reference/page-120.webp" target="_blank" rel="noopener">4-3-1 해설 ⑧ 원문</a></p>
+      <output id="parallel-summary">${esc(parallelSummary(selected))}</output><p class="muted">예: 같은 경로 100m에 4열이면 총길이 400m 또는 경로길이 100m를 입력합니다. 재료비는 400m로 계산합니다. 길이·규격 또는 동시 시공 조건이 다른 구간은 행을 나누세요. 해설 계수 직접입력에는 동시포설 계수를 중복 포함하지 마세요.</p></fieldset>`;
+  }
 
   function surchargeEditor(selected){
     const groups=Surcharges.groups,choices=Surcharges.items.filter(i=>i.group===surchargeGroup);
     let summary='할증 없음';
-    try{if(selected){const a=Surcharges.combined(selected,line);summary=`공종 해설 ×${a.specialFactor} × 품 (1 + ${a.laborPercent.toLocaleString('ko-KR',{maximumFractionDigits:4})}%) × 노임 (1 + ${a.wagePercent}%) = 노무비 ×${Number(a.factor.toFixed(6))} · 재료 ×${a.materialFactor}`;}}catch(error){summary=error.message;}
+    try{if(selected){summary=factorSummary(Surcharges.combined(selected,line));}}catch(error){summary=error.message;}
     return `<fieldset class="surcharge-editor"><legend>공통 품·노임·재료 할증 (복수 선택)</legend><p class="muted">공통 품 할증은 합산하고 노임 할증은 별도로 곱합니다. 적용 대상이 일부 수량·인력인 경우 행을 나누어 입력하세요.</p>
       <div class="toolbar"><label>할증 종류 <select id="surcharge-group">${groups.map(g=>`<option value="${g.id}" ${g.id===surchargeGroup?'selected':''}>${esc(g.name)} (${g.code})</option>`).join('')}</select></label>
       <label>세부 조건 <select id="surcharge-choice">${choices.map(i=>`<option value="${i.id}">${esc(i.name)}${i.rate==null?'':` · ${i.rate}%`}</option>`).join('')}</select></label><button type="button" id="surcharge-add">할증 추가</button></div>
@@ -74,21 +89,21 @@
       <form id="estimate-line"><div class="estimate-fields">
       <label class="field estimate-standard">공종·규격<select name="standardId" required><option value="">등록 품셈 선택</option>${standards.map(s=>`<option value="${esc(s.id)}" ${s.id===line.standardId?'selected':''}>${esc(s.code+' '+s.name+' · '+s.spec)}</option>`).join('')}</select></label>
       <label class="field">단위<input value="${esc(selected?.unit||'')}" readonly></label>
-      ${field('수량','quantity',quantityInput??line.length*line.count,'number',true)}${field('재료 단가 (원/단위)','materialPrice',line.materialPrice,'number')}
+      ${field(Surcharges.supportsParallel(selected)?(line.parallelQuantityMode==='route'?'1열 경로길이 (m)':'케이블 총길이 (m)'):'수량','quantity',quantityInput??line.length*line.count,'number',true)}${field('재료 단가 (원/단위)','materialPrice',line.materialPrice,'number')}
       <label class="field">공종 해설 계수<select name="adjustment">${(selected?.adjustments||[{id:'base',name:'기본 조건',factor:1}]).map(a=>`<option value="${esc(a.id)}" ${a.id===line.adjustment?'selected':''}>${esc(a.name)} × ${a.factor}</option>`).join('')}<option value="custom" ${line.adjustment==='custom'?'selected':''}>해설 계수 직접입력</option></select></label>
       ${line.adjustment==='custom'?field('해설 적용 계수 (1 = 기본)','standardFactor',line.standardFactor,'number',true)+field('해설 계수 적용 근거','standardFactorBasis',line.standardFactorBasis,'text',true):''}
       ${field('재료 단가 출처','materialSource',line.materialSource)}
-      </div>${selected?.conditions?`<details><summary>적용 조건</summary>${esc(selected.conditions)}</details>`:''}${surchargeEditor(selected)}
+      </div>${selected?.conditions?`<details><summary>적용 조건</summary>${esc(selected.conditions)}</details>`:''}${parallelEditor(selected)}${surchargeEditor(selected)}
       <div class="toolbar"><label><input type="checkbox" name="reviewed" ${line.reviewed?'checked':''}> 품셈·적용 조건 확인</label><button type="submit" class="primary">${lineIndex<0?'항목 저장':'수정 저장'}</button>${lineIndex<0?'':'<button type="button" id="estimate-cancel-line">취소</button>'}</div></form>
       <div class="scroll"><table><thead><tr><th>공종</th><th>규격</th><th>단위</th><th>수량</th><th>재료 단가</th><th>재료비</th><th>노무비</th><th>할증</th><th>관리</th></tr></thead><tbody>
-      ${state.quantities.map((q,i)=>{const s=byId.get(q.standardId);let a;try{a=Surcharges.combined(s,q);}catch{}return `<tr><td>${esc(s?.name)}</td><td>${esc(s?.spec)}</td><td>${esc(s?.unit)}</td><td class="num">${money(q.length*q.count)}</td><td class="num">${q.materialPrice==null?'—':money(Number(q.materialPrice))}</td><td class="num">${money(materials.get(q.id)||0)}</td><td class="num">${labor.has(q.id)?money(labor.get(q.id)):'검토 필요'}</td><td><details><summary>${a?`노무비 ×${Number(a.factor.toFixed(6))} / 재료 ×${a.materialFactor}`:'검토 필요'}</summary>${esc(a?.basis)}</details></td><td class="estimate-row-actions">${rowButtons(i)}</td></tr>`;}).join('')||'<tr><td colspan="9" class="muted">저장한 공종 없음</td></tr>'}
+      ${state.quantities.map((q,i)=>{const s=byId.get(q.standardId);let a;try{a=Surcharges.combined(s,q);}catch{}return `<tr><td>${esc(s?.name)}</td><td>${esc(s?.spec)}</td><td>${esc(s?.unit)}</td><td class="num">${money(q.length*q.count*(a?.parallel.quantityMultiplier??1))}${a?.parallel.runs>1?`<small>${a.parallel.runs}열 · 경로 ${money(q.length*q.count*(a.parallel.quantityMultiplier)/a.parallel.runs)}m</small>`:''}</td><td class="num">${q.materialPrice==null?'—':money(Number(q.materialPrice))}</td><td class="num">${money(materials.get(q.id)||0)}</td><td class="num">${labor.has(q.id)?money(labor.get(q.id)):'검토 필요'}</td><td><details><summary>${a?`${a.parallel.runs>1?a.parallel.runs+'열 · ':''}노무비 ×${Number(a.factor.toFixed(6))} / 재료 ×${a.materialFactor}`:'검토 필요'}</summary>${esc(a?.basis)}</details></td><td class="estimate-row-actions">${rowButtons(i)}</td></tr>`;}).join('')||'<tr><td colspan="9" class="muted">저장한 공종 없음</td></tr>'}
       </tbody></table></div></section>
       <div class="estimate-expenses">${expenseSection('machine',expenseRows.filter(x=>x.row.kind==='machine'))}${expenseSection('other',expenseRows.filter(x=>x.row.kind==='other'))}</div>
       <section class="card estimate-footer"><div><small>검토 중 공사비</small><strong>${money(result.total)}원</strong></div><div class="toolbar"><button data-nav="10">노임·제비율 설정</button><button class="primary" id="estimate-calculate">산정하기</button></div></section>`;
   }
 
   function choose(id) {
-    line={...line,standardId:id,adjustment:'base',surcharges:[],reviewed:false};
+    line={...line,standardId:id,adjustment:'base',surcharges:[],parallelRuns:1,parallelQuantityMode:'total',reviewed:false};
   }
 
   function updateRow(collection,index,action) {
@@ -132,6 +147,7 @@
           materialPrice:value('materialPrice')===''?null:Estimator.number(value('materialPrice')),
           materialSource:value('materialSource'),adjustment:value('adjustment')||'base',reviewed:values.has('reviewed')};
         if(row.adjustment==='custom'){row.standardFactor=Estimator.number(value('standardFactor'));row.standardFactorBasis=value('standardFactorBasis');}
+        if(Surcharges.supportsParallel(standard)){row.parallelRuns=Estimator.number(value('parallelRuns'));row.parallelQuantityMode=value('parallelQuantityMode');}
         Surcharges.combined(standard,row);
         host.update('quantities',rows=>{
           if(lineIndex<0)rows.push(row);
@@ -172,14 +188,21 @@
     if(target.name==='reviewed')line.reviewed=target.checked;
     if(target.name==='standardFactor')line.standardFactor=target.value;
     if(target.name==='standardFactorBasis')line.standardFactorBasis=target.value;
+    if(target.name==='parallelRuns'){line.parallelRuns=target.value;line.reviewed=false;document.querySelector('#estimate-line [name="reviewed"]').checked=false;}
     if(target.dataset.surchargeValue!==undefined)line.surcharges[Number(target.dataset.surchargeValue)].value=target.value;
     if(target.dataset.surchargeNote!==undefined)line.surcharges[Number(target.dataset.surchargeNote)].note=target.value;
-    if(target.dataset.surchargeValue!==undefined||target.dataset.surchargeNote!==undefined||target.name==='standardFactor'){
+    if(target.dataset.surchargeValue!==undefined||target.dataset.surchargeNote!==undefined||['standardFactor','parallelRuns','quantity'].includes(target.name)){
       const standard=host.getState().standards.find(s=>s.id===line.standardId);
-      try{const a=Surcharges.combined(standard,line);document.querySelector('#surcharge-summary').textContent=`공종 해설 ×${a.specialFactor} × 품(1 + ${a.laborPercent.toFixed(4)}%) × 노임(1 + ${a.wagePercent}%) = 노무비 ×${Number(a.factor.toFixed(6))} · 재료 ×${a.materialFactor}`;}catch(error){document.querySelector('#surcharge-summary').textContent=error.message;}
+      try{document.querySelector('#surcharge-summary').textContent=factorSummary(Surcharges.combined(standard,line));}catch(error){document.querySelector('#surcharge-summary').textContent=error.message;}
+      if(Surcharges.supportsParallel(standard))document.querySelector('#parallel-summary').textContent=parallelSummary(standard);
     }
   });
   document.addEventListener('change',event=>{
+    if(event.target.form?.id==='estimate-line'&&event.target.name==='parallelQuantityMode'){
+      const nextMode=event.target.value,oldMode=line.parallelQuantityMode??'total',runs=Number(line.parallelRuns??1),input=Number(quantityInput??line.length*line.count);
+      if(oldMode!==nextMode&&Number.isInteger(runs)&&runs>0&&Number.isFinite(input))quantityInput=String(nextMode==='route'?input/runs:input*runs);
+      line.parallelQuantityMode=nextMode;line.reviewed=false;host.refresh();
+    }
     if(event.target.id==='surcharge-group'){surchargeGroup=event.target.value;host.refresh();}
     if(event.target.form?.id==='estimate-line'&&event.target.name==='adjustment'){line.adjustment=event.target.value;line.reviewed=false;host.refresh();}
     if(event.target.form?.id==='estimate-line'&&event.target.name==='standardId'){

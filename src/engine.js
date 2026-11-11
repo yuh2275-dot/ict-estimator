@@ -22,8 +22,9 @@
         const standard = state.standards.find(s => s.id === row.standardId);
         if (!standard || !standard.verified) throw Error('기준자료 미등록');
         if (standard.year !== Number(state.project.year)) throw Error('품셈 기준연도 불일치');
-        const quantity = number(row.length) * number(row.count);
+        const inputQuantity = number(row.length) * number(row.count);
         const adjustment = Surcharges.combined(standard,row);
+        const quantity = inputQuantity * adjustment.parallel.quantityMultiplier;
         if (row.materialPrice != null) {
           const price = number(row.materialPrice);
           const materialQuantity=quantity*adjustment.materialFactor;
@@ -41,7 +42,7 @@
           return {trade:item.trade, base:item.base, manDays, wage:number(wage.price), appliedWage, amount:manDays * appliedWage, source:wage.source};
         });
         const amount = round(details.reduce((s,d) => s + d.amount, 0), state.rounding);
-        labor.push({...row, standard, quantity, adjustment, details, amount}); directLabor += amount;
+        labor.push({...row, standard, quantity, inputQuantity, routeLength:quantity/adjustment.parallel.runs, adjustment, details, amount}); directLabor += amount;
       } catch (e) { errors.push((row.location || '수량 행') + ' · ' + e.message); }
     }
     const expenseRows = (state.expenses || []).map(row => ({...row, amount:expenseAmount(row,state.rounding)}));

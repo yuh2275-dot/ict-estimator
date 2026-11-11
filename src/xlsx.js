@@ -89,7 +89,7 @@
       }
       if(row?.details.some(d=>!tradeColumns[d.trade]))throw Error('양식에서 지원하지 않는 직종');
       if(i<19){
-        for(const [col,val] of Object.entries({A:row?.standard.name||'',B:row?.standard.spec||'',C:row?.quantity??'',D:row?.standard.unit||'',E:row?`${row.location} / ${row.length} × ${row.count} / ${row.basis}`:'',F:row?.note||''}))set('물량산출근거',col+(4+i),val);
+        for(const [col,val] of Object.entries({A:row?.standard.name||'',B:row?.standard.spec||'',C:row?.quantity??'',D:row?.standard.unit||'',E:row?`${row.location} / ${row.length} × ${row.count} / ${row.basis}${row.adjustment.parallel.runs>1?` / ${row.adjustment.parallel.runs}열 동시포설 · 입력 ${row.adjustment.parallel.mode==='route'?'경로길이':'총길이'} · 총 ${row.quantity}m`:''}`:'',F:row?.note||''}))set('물량산출근거',col+(4+i),val);
       }else if(row)throw Error('물량산출근거는 19행까지 지원합니다.');
     }
     if(Object.keys(trades).length>7)throw Error('노무비 직종 7행 초과');
@@ -140,8 +140,8 @@
         ...result.costs.map(c=>[c.name,c.amount,c.enabled?(c.method==='fixed'?'금액 직접입력':Number(c.rate)):0,c.base,c.enabled?[c.method==='fixed'?'직접 산정금액':`기초액 ${c.addition??0}원`,c.source].join(' · '):`적용 제외 · ${c.source}`]),
         ['총공사금액',result.total],[],['공사명',state.project.name],['적용 기준일',state.project.date]]],
       ['산출내역서',[['품셈 번호','공종·항목','규격','단위','수량','재료비','노무비','경비','합계','산출 근거'],...detail]],
-      ['표준일위대가',[['품셈 번호','공종','규격','수량 단위','직종','기준수량','기본품','노무비 총 계수','기본 노임단가','단위당 노무비','단위당 재료 단가','근거','품 계수','노임 계수','할증 후 노임단가','공량 (인)','재료 계수'],...result.labor.flatMap(row=>row.details.map(d=>[
-        row.standard.code,row.standard.name,row.standard.spec,row.standard.unit,d.trade,row.standard.baseQuantity,d.base,row.adjustment.factor,d.wage,d.base*row.adjustment.laborFactor*d.appliedWage/row.standard.baseQuantity,linkedMaterials.get(row.id)?.price??'',row.adjustment.basis,row.adjustment.laborFactor,row.adjustment.wageFactor,d.appliedWage,d.manDays,row.adjustment.materialFactor]))]],
+      ['표준일위대가',[['품셈 번호','공종','규격','수량 단위','직종','기준수량','기본품','노무비 총 계수','기본 노임단가','단위당 노무비','단위당 재료 단가','근거','품 계수','노임 계수','할증 후 노임단가','공량 (인)','재료 계수','동시포설 열 수','1열 경로길이 (m)','동시포설 묶음 계수','수량 입력 기준'],...result.labor.flatMap(row=>row.details.map(d=>[
+        row.standard.code,row.standard.name,row.standard.spec,row.standard.unit,d.trade,row.standard.baseQuantity,d.base,row.adjustment.factor,d.wage,d.base*row.adjustment.laborFactor*d.appliedWage/row.standard.baseQuantity,linkedMaterials.get(row.id)?.price??'',row.adjustment.basis,row.adjustment.laborFactor,row.adjustment.wageFactor,d.appliedWage,d.manDays,row.adjustment.materialFactor,row.adjustment.parallel.runs>1?row.adjustment.parallel.runs:'',row.adjustment.parallel.runs>1?row.routeLength:'',row.adjustment.parallel.runs>1?row.adjustment.parallel.bundleFactor:'',row.adjustment.parallel.runs>1?(row.adjustment.parallel.mode==='route'?'1열 경로길이':'케이블 총길이'):'']))]],
       ['자재단가표',[['품명','규격','단위','수량','단가','금액','단가 출처'],...result.materials.map(m=>[m.name,m.spec,m.unit,Number(m.quantity),Number(m.price),m.amount,m.source])]],
       ['노임단가표',[['직종','일 노임 (원)','적용 시작일','적용 종료일','근거'],...state.wages.map(w=>[w.trade,Number(w.price),w.from,w.to,w.source])]]
     ];

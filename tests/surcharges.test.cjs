@@ -6,6 +6,36 @@ require('../src/xlsx.js');
 // Synthetic quantities and wages; surcharge percentages are source rules.
 const fixture=()=>({project:{year:2026,date:'2026-06-01',name:'회귀 검증'},rounding:'floor',materials:[],expenses:[],quantities:[{id:'q',standardId:'s',length:10,count:1,reviewed:true,adjustment:'base',materialPrice:100}],standards:[{id:'s',verified:true,year:2026,code:'TEST',name:'TEST',unit:'m',baseQuantity:10,labor:[{trade:'TEST',base:1}],adjustments:[{id:'base',name:'기본',factor:1,basis:'TEST'},{id:'tray',name:'TEST',factor:1.2,basis:'TEST'}]}],wages:[{trade:'TEST',price:100000,from:'2026-01-01',to:'2026-12-31',source:'TEST ONLY'}],rates:[],ratesReviewed:true});
 function selection(state,items){state.quantities[0].surcharges=items;return E.calculate(state);}
+function utpFixture(){const s=fixture();s.standards[0].code='4-3-1';s.standards[0].labor[0].base=.15;Object.assign(s.quantities[0],{length:400,parallelRuns:4,parallelQuantityMode:'total'});return s;}
+test('UTP four runs use one-route 340 percent, not 340 percent of all cable lengths',()=>{
+  const s=utpFixture(),r=E.calculate(s);
+  assert.deepEqual(r.errors,[]);assert.equal(r.labor[0].quantity,400);assert.equal(r.labor[0].routeLength,100);
+  assert.equal(r.directLabor,510000);assert.equal(r.material,40000);assert.equal(r.labor[0].adjustment.parallel.bundleFactor,3.4);assert.equal(r.labor[0].adjustment.factor,.85);
+  s.quantities[0].length=100;s.quantities[0].parallelQuantityMode='route';
+  const route=E.calculate(s);assert.equal(route.directLabor,r.directLabor);assert.equal(route.material,r.material);assert.equal(route.total,r.total);
+});
+test('UTP simultaneous rules and material allowances combine without multiplying material twice',()=>{
+  const s=utpFixture();s.quantities[0].adjustment='tray';s.quantities[0].surcharges=[{id:'night'},{id:'material_0',value:7.5,note:'TEST'}];
+  const r=E.calculate(s);assert.deepEqual(r.errors,[]);assert.equal(r.directLabor,1147500);assert.equal(r.material,43000);assert.equal(r.materials[0].quantity,430);
+});
+test('UTP count boundaries and unsupported standards reject invalid simultaneous entries',()=>{
+  const s=utpFixture();
+  for(const [runs,bundle] of [[1,1],[2,1.8],[3,2.6],[4,3.4],[5,4.2],[8,6.6]])assert.equal(S.parallel(s.standards[0],{parallelRuns:runs}).bundleFactor,bundle);
+  for(const runs of [0,1.5,-2,'',null])assert.throws(()=>S.parallel(s.standards[0],{parallelRuns:runs}));
+  assert.throws(()=>S.parallel({...s.standards[0],code:'4-3-2'},s.quantities[0]));
+  assert.throws(()=>S.parallel({...s.standards[0],year:2027},s.quantities[0]));
+  assert.equal(S.parallel(s.standards[0],{}).perCableFactor,1);
+  const restored=JSON.parse(JSON.stringify(s));assert.equal(E.calculate(restored).total,550000);
+});
+test('UTP Excel carries total cable length, route length and simultaneous factor',async()=>{
+  global.JSZip=require('../vendor/jszip.min.js');
+  const s=utpFixture();s.quantities[0].length=100;s.quantities[0].parallelQuantityMode='route';
+  const r=E.calculate(s),zip=await JSZip.loadAsync(await (await ExcelIO.writeEstimate(s,r)).arrayBuffer());
+  const rates=await zip.file('xl/worksheets/sheet3.xml').async('string');
+  assert.match(rates,/<c r="R2"><v>4<\/v>/);assert.match(rates,/<c r="S2"><v>100<\/v>/);assert.match(rates,/<c r="T2"><v>3.4<\/v>/);
+  assert.match(await zip.file('xl/worksheets/sheet2.xml').async('string'),/<c r="E2"><v>400<\/v>/);
+  assert.match(await zip.file('xl/worksheets/sheet4.xml').async('string'),/<c r="D2"><v>400<\/v>/);
+});
 test('all fourteen common sections plus wage and material are reachable with unique option IDs',()=>{
   for(let n=1;n<=14;n++)assert.ok(S.groups.some(g=>g.code===`1-2-2-${n}`));
   assert.ok(S.groups.some(g=>g.code==='1-2-1'));assert.ok(S.groups.some(g=>g.code==='1-1-6'));
