@@ -86,7 +86,7 @@
     '4-3-2':{page:91,notes:['③ Outlet Box는 별도 계상 (4-3-3)','⑤ 철가 및 케이블 포설포박은 5-1-1 기초설치(공통) 적용'],groups:t=>[
       /RS-?232/i.test(t)&&{id:'pins',name:'RS-232C 핀 수',basis:'해설 ①',choices:[none('10Pin 이하'),choice('pin11','11Pin 이상 130%',1.3)]},
       /Modular|RJ45|Outlet|콘센트/i.test(t)&&{id:'shield',name:'케이블 종류',basis:'해설 ②',choices:[none('UTP'),choice('stp','STP·FTP용 Modular Jack 130%',1.3)]},
-      /Outlet|콘센트/i.test(t)&&countGroup('ports','Outlet 구수','해설 ③',{min:1,step:1,unit:'구',factor:n=>{if(n<=4)return 1+.2*(n-1);if(n%2)throw Error('4구 초과는 2구 단위(6구, 8구…)로 입력하세요. 그 외는 해설 계수 직접입력을 사용하세요.');return 1.6+.2*(n-4)/2;},hint:'1구 100% · 2구 120% · 3구 140% · 4구 160% · 4구 초과 2구당 20% 가산'}),
+      /Outlet|콘센트/i.test(t)&&countGroup('ports','Outlet 구수','해설 ③',{min:1,step:1,unit:'구',factor:n=>{if(n<=4)return 1+.2*(n-1);if(n%2)throw Error('4구 초과는 2구 단위(6구, 8구…)로 입력하세요. 그 외는 추가 배율 직접입력을 사용하세요.');return 1.6+.2*(n-4)/2;},hint:'1구 100% · 2구 120% · 3구 140% · 4구 160% · 4구 초과 2구당 20% 가산'}),
       /RJ45|Plug/i.test(t)&&{id:'cat6',name:'등급',basis:'해설 ④',choices:[none('Cat5e 이하'),choice('cat6','Cat6 Modular 135%',1.35)]},
       work('해설 ⑥',.3,.8)]},
     '4-3-3':{page:92,notes:['④ 단순 도통시험은 Port당 통신케이블공·보통인부 각 0.01인, 링크성능 테스트는 회선시험 품셈 적용, 시험성적서는 Port당 통신관련산업기사 0.01인 가산 (별도 행으로 계상)','⑧ 철가 및 케이블 포설포박은 5-1-1 기초설치(공통) 적용'],groups:t=>{
@@ -136,8 +136,8 @@
     const section=extracted().sections?.[standard.code];
     if(!section)return {groups:[],notes:[],page:null,extracted:false};
     const groups=extractedGroups(standard.code,section).filter(g=>!registered.has(g.key));
-    const notes=section.notes.map(n=>`${n.ref} ${n.kind==='common'?'[공통 할증 화면에서 선택] ':n.kind==='manual'?'[비율 확인 후 해설 계수 직접입력] ':''}${n.text}`);
-    const partial=section.groups.filter(g=>g.partial).map(g=>`${g.ref} [일부 비율은 자동 계수에서 제외 · 해설 계수 직접입력] ${g.text}`);
+    const notes=section.notes.map(n=>`${n.ref} ${n.kind==='common'?'[공통 할증 화면에서 선택] ':n.kind==='manual'?'[비율 확인 후 추가 배율 직접입력] ':''}${n.text}`);
+    const partial=section.groups.filter(g=>g.partial).map(g=>`${g.ref} [일부 비율은 자동 계수에서 제외 · 추가 배율 직접입력] ${g.text}`);
     return {groups,notes:[...partial,...notes],page:(section.groups[0]||section.notes[0])?.page??null,extracted:true};
   }
   function commentaryFactors(standard,row){
@@ -193,8 +193,8 @@
     let special=standard.adjustments.find(a=>a.id===row.adjustment);
     if(row.adjustment==='custom'){
       const factor=finite(row.standardFactor);
-      if(!String(row.standardFactorBasis||'').trim())throw Error('공종 해설 계수의 적용 근거를 입력하세요.');
-      special={id:'custom',name:'공종 해설 직접입력',factor,basis:row.standardFactorBasis};
+      if(!String(row.standardFactorBasis||'').trim())throw Error('추가 배율의 근거(해설 번호·원문)를 입력하세요.');
+      special={id:'custom',name:'추가 배율 직접입력',factor,basis:row.standardFactorBasis};
     }
     if(!special)throw Error('허용되지 않은 할증');
     if(row.surcharges!=null&&!Array.isArray(row.surcharges))throw Error('공통 할증 목록 형식 오류');
@@ -216,6 +216,17 @@
     return {id:special.id,name:[special.name,...notes.applied.map(a=>a.name),parallelWork.runs>1?`${parallelWork.runs}열 동시포설`:'',...selected.map(i=>i.name)].filter(Boolean).join(' / '),factor:laborFactor*wageFactor,laborFactor,wageFactor,laborPercent,wagePercent,materialPercent,materialFactor:1+materialPercent/100,specialFactor:Number(special.factor),commentaryFactor:notes.factor,commentary:notes.applied,demolition:notes.demolition,selected,parallel:parallelWork,
       basis:[special.basis,...notes.applied.map(a=>`${a.name} · ${a.basis}`),parallelBasis,...selected.map(i=>`${i.name} ${i.rate}%${i.wageRate?` + 노임 ${i.wageRate}%`:''} · ${i.basis}`),`공종계수 ${special.factor}${notes.applied.length?` × 해설 조건(${commentaryText})`:''}${parallelWork.runs>1?` × 동시포설(${parallelWork.bundleFactor}÷${parallelWork.runs})`:''} × 품(1 + ${laborPercent}%) × 노임(1 + ${wagePercent}%)`].filter(Boolean).join(' / ')};
   }
-  root.Surcharges={groups,items,resolve,combined,parallel,supportsParallel,commentary,commentaryFactors};
+  // 추가 배율(직접입력)이 해설 조건과 겹치거나 개수로 잘못 입력된 것으로 보이면 경고한다. 저장 시 사용자가 확인해야 한다.
+  function customWarnings(standard,row){
+    if(row.adjustment!=='custom'||!standard)return [];
+    const factor=Number(row.standardFactor),warnings=[];
+    if(!Number.isFinite(factor))return [];
+    let applied=[];try{applied=commentaryFactors(standard,row).applied;}catch{}
+    if(applied.length)warnings.push(`위에서 선택한 해설 조건(${applied.map(a=>`${a.name} ×${Number(a.factor.toFixed(6))}`).join(', ')})에 추가 배율(×${factor})이 한 번 더 곱해집니다. 같은 조건을 두 번 넣은 것이면 추가 배율을 '기본 조건'으로 되돌리세요.`);
+    if(factor>2)warnings.push(`추가 배율 ×${factor} = 본 품셈의 ${Number((factor*100).toFixed(4))}%입니다. 구·열·대 같은 개수를 넣은 것이 아닌지 확인하세요. 예: 130% → 1.3`);
+    if(factor===1)warnings.push('추가 배율 1은 할증이 없는 것과 같습니다. 필요 없으면 기본 조건을 선택하세요.');
+    return warnings;
+  }
+  root.Surcharges={groups,items,resolve,combined,parallel,supportsParallel,commentary,commentaryFactors,customWarnings};
   if(typeof module!=='undefined')module.exports=root.Surcharges;
 })(globalThis);
