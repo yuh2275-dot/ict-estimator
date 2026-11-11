@@ -78,8 +78,8 @@
     return out;
   }
 
-  function build(state,result){
-    if(result.errors.length)throw Error('공사원가계산의 검토 항목을 먼저 해결하세요.');
+  function build(state,result,options={}){
+    if(result.errors.length&&!options.preview)throw Error('공사원가계산의 검토 항목을 먼저 해결하세요.');
     const project=state.project||{},title=project.name||'정보통신공사';
     const RD=state.rounding==='round'?'ROUND':'ROUNDDOWN';
     const round=n=>state.rounding==='round'?Math.round(n+Number.EPSILON):Math.floor(n+1e-8);
@@ -120,11 +120,15 @@
 
     // ---------- 인건비산출기초 ----------
     const ws=sheet('인건비산출기초').widths([8,22,18,52]);
-    const wages=[...new Map(state.wages.filter(w=>w.from<=project.date&&w.to>=project.date).map(w=>[w.trade,w])).values()];
+    // 계산에 실제로 쓴 노임(직종별)을 먼저 넣고, 기준일에 해당하는 나머지 직종 노임을 덧붙인다.
+    const usedWages=new Map();
+    for(const row of result.labor)for(const d of row.details)if(!usedWages.has(d.trade))usedWages.set(d.trade,{trade:d.trade,price:d.wage,from:d.wageFrom??'',to:d.wageTo??'',source:d.missingWage?'노임단가 미등록':d.source});
+    for(const w of state.wages)if(w.from<=project.date&&w.to>=project.date&&!usedWages.has(w.trade))usedWages.set(w.trade,w);
+    const wages=[...usedWages.values()];
     ws.set('A1',`${project.year||String(project.date||'').slice(0,4)}년 적용 시중노임단가표`,S.title).merge('A1:D1').height(1,30);
     ws.set('A3',`적용 기준일 : ${project.date||''}`,S.note).merge('A3:D3');
     ['번호','직  종','시중노임 (원/일)','비  고 (근거 · 적용기간)'].forEach((h,i)=>ws.set(colName(i)+'5',h,S.head));
-    wages.forEach((w,i)=>ws.set('A'+(6+i),i+1,S.center).set('B'+(6+i),w.trade,S.center).set('C'+(6+i),num(Number(w.price)),S.money).set('D'+(6+i),`${w.source} (${w.from} ~ ${w.to})`));
+    wages.forEach((w,i)=>ws.set('A'+(6+i),i+1,S.center).set('B'+(6+i),w.trade,S.center).set('C'+(6+i),num(Number(w.price)),S.money).set('D'+(6+i),[w.source,w.from||w.to?`(${w.from} ~ ${w.to})`:'',w.from>project.date||w.to&&w.to<project.date?'※ 기준일이 적용기간 밖':''].filter(Boolean).join(' ')));
     const wageRange=`인건비산출기초!$B$6:$C$${Math.max(6,5+wages.length)}`;
 
     // ---------- 일위대가표 ----------
@@ -341,6 +345,35 @@
     sheets.forEach((s,i)=>zip.file(`xl/worksheets/sheet${i+1}.xml`,s.xml(s.name!=='표지'&&s.name!=='원가계산서'&&s.name!=='인건비산출기초'&&s.name!=='자재단가산출기초'&&s.name!=='물량산출근거')));
     return zip.generateAsync({type:typeof Blob!=='undefined'&&root.document?'blob':'uint8array',compression:'DEFLATE',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   }
-  root.DesignWorkbook={build,write,koreanAmount,TRADES};
+  // 화면 미리보기: 시트를 병합 셀까지 반영한 HTML 표로 바꾼다(엑셀과 같은 내용).
+  const htmlText=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])).replace(/\n/g,'<br>');
+  function toHtml(sh){
+    let maxR=0,maxC=0;
+    for(const ref of sh.cells.keys()){const [,c,r]=ref.match(/([A-Z]+)(\d+)/);maxR=Math.max(maxR,+r);maxC=Math.max(maxC,colIndex(c));}
+    const span=new Map(),covered=new Set();
+    for(const m of sh.merges){const [a,b]=m.split(':'),[,c1,r1]=a.match(/([A-Z]+)(\d+)/),[,c2,r2]=b.match(/([A-Z]+)(\d+)/);
+      span.set(a,{rows:+r2-+r1+1,cols:colIndex(c2)-colIndex(c1)+1});
+      for(let r=+r1;r<=+r2;r++)for(let c=colIndex(c1);c<=colIndex(c2);c++)if(r!==+r1||c!==colIndex(c1))covered.add(colName(c)+r);}
+    const cls={[S.title]:'x-title',[S.head]:'x-head',[S.money]:'x-num',[S.decimal]:'x-num',[S.qty]:'x-num',[S.totalLabel]:'x-total',[S.totalMoney]:'x-total x-num',[S.totalDecimal]:'x-total x-num',[S.center]:'x-center',[S.section]:'x-section',[S.cover]:'x-cover',[S.coverAmount]:'x-strong',[S.coverBox]:'x-center',[S.label]:'x-strong',[S.note]:'x-plain',[S.plain]:'x-plain',[S.coverText]:'x-plain'};
+    const fmt=(c)=>{
+      if(typeof c.value!=='number')return htmlText(c.value);
+      if(c.style===S.decimal||c.style===S.totalDecimal)return c.value.toLocaleString('ko-KR',{maximumFractionDigits:4});
+      if(c.style===S.qty)return c.value.toLocaleString('ko-KR',{maximumFractionDigits:3});
+      return Math.round(c.value).toLocaleString('ko-KR');
+    };
+    let html='';
+    for(let r=1;r<=maxR;r++){
+      let row='';
+      for(let c=0;c<=maxC;c++){
+        const ref=colName(c)+r;if(covered.has(ref))continue;
+        const cell=sh.cells.get(ref),sp=span.get(ref);
+        const attrs=(sp?.rows>1?` rowspan="${sp.rows}"`:'')+(sp?.cols>1?` colspan="${sp.cols}"`:'');
+        row+=cell?`<td class="${cls[cell.style]||''}"${attrs}${cell.formula?` title="=${htmlText(cell.formula)}"`:''}>${fmt(cell)}</td>`:`<td class="x-empty"${attrs}></td>`;
+      }
+      html+=`<tr>${row}</tr>`;
+    }
+    return `<table class="x-sheet">${html}</table>`;
+  }
+  root.DesignWorkbook={build,write,toHtml,koreanAmount,TRADES};
   if(typeof module!=='undefined')module.exports=root.DesignWorkbook;
 })(globalThis);

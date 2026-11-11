@@ -19,16 +19,21 @@ function readConfigList(type,content){
 function calculationIssues(errors){
  return errors.length?`<div class="card"><h2>계산 전 확인할 항목</h2><ul>${errors.map(error=>`<li class="error">${esc(error)}</li>`).join('')}</ul></div>`:'';
 }
+let previewSheet='원가계산서';
 function costSheet(result){
- const detail=[['재료비',result.material,'',''],['직접노무비',result.directLabor,'',''],
-  ...result.expenseRows.map(e=>[`${e.kind==='machine'?'기계경비':'기타경비'} · ${e.name}`,e.amount,'',e.kind==='machine'?[`${e.hours}시간 × ${money(e.unitPrice)}원`,e.source].filter(Boolean).join(' · '):e.source]),
-  ...result.costs.map(c=>[c.name+(c.enabled?'':' (제외)'),c.amount,c.enabled?(c.method==='fixed'?'금액 직접입력':`${c.rate}%`):'',c.enabled?(c.method==='fixed'?c.source:`${money(c.base)}원 × ${c.rate}% + ${money(c.addition??0)}원 · ${c.source}`):c.source])];
- return `<div class="card estimate-panel"><div class="estimate-section-head"><h2>공사원가계산서</h2><div class="toolbar"><button data-nav="11">돌아가기</button><button class="primary" id="estimate-export" ${result.errors.length?'disabled':''}>엑셀 저장</button></div></div>
- <p>${esc(state.project.name||'공사명 미입력')} · ${esc(state.project.date)}</p>
- ${table(['비목','금액 (원)','적용요율','산출 근거'],detail.map(([name,amount,rate,basis])=>`<tr><td>${esc(name)}</td><td class="num">${money(amount)}</td><td>${esc(rate)}</td><td>${esc(basis)}</td></tr>`).concat(`<tr class="estimate-total"><th>총공사금액</th><td class="num"><strong>${money(result.total)}</strong></td><td colspan="2">${result.errors.length?'검토 중 금액':''}</td></tr>`))}
+ // 엑셀 저장과 같은 통합문서를 화면에 그대로 보여 준다(확인 항목이 남아 있어도 미리보기).
+ let preview='',names=[];
+ try{const book=DesignWorkbook.build(state,result,{preview:true});names=book.sheets.map(s=>s.name);const sheet=book.sheets.find(s=>s.name===previewSheet)||book.sheets[1];previewSheet=sheet.name;preview=DesignWorkbook.toHtml(sheet);}
+ catch(error){preview=`<p class="error">미리보기를 만들 수 없습니다: ${esc(error.message)}</p>`;}
+ return `<div class="card estimate-panel"><div class="estimate-section-head"><h2>공사원가계산서</h2><div class="toolbar"><button data-nav="11">돌아가기</button><button class="primary" id="estimate-export" ${result.errors.length?'disabled title="계산 전 확인할 항목을 먼저 해결하세요."':''}>엑셀 저장</button></div></div>
+ <p>${esc(state.project.name||'공사명 미입력')} · 기준일 ${esc(state.project.date)} · 총공사금액 <strong>${money(result.total)}원</strong>${result.errors.length?' <span class="tag">검토 중 금액</span>':''}</p>
+ <div class="toolbar sheet-tabs">${names.map(n=>`<button data-preview-sheet="${esc(n)}" class="${n===previewSheet?'active':''}">${esc(n)}</button>`).join('')}</div>
+ <div class="scroll sheet-preview">${preview}</div>
+ <p class="muted">엑셀 저장 파일과 같은 내용입니다. 금액 칸에 마우스를 올리면 엑셀 수식이 보입니다.</p>
  <label><input type="checkbox" data-key="ratesReviewed" ${state.ratesReviewed?'checked':''}> 제비율 전체 적용·제외 검토 완료</label>
  <p class="muted">제비율은 적용 기준 및 설정에서 직접 입력합니다. 빈 목록을 검토 완료하면 모든 제비율을 제외합니다.</p></div>`;
 }
+
 function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function saveJson(data,name){download(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),name);}
 function input(key,value,type='text'){return `<input data-key="${key}" value="${esc(value)}" type="${type}" ${type==='number'?'min="0" step="any"':''}>`;}
@@ -108,6 +113,7 @@ document.addEventListener('change',async event=>{try{
 document.addEventListener('input',e=>{if(e.target.id==='search')document.querySelectorAll('[data-search]').forEach(r=>r.hidden=!r.dataset.search.toLowerCase().includes(e.target.value.toLowerCase()));});
 document.addEventListener('click',async e=>{try{const t=e.target.closest('button');if(!t)return;
  if(t.dataset.nav!==undefined){active=Number(t.dataset.nav);returnToEstimate=false;BasisUI.reset();render();}
+ if(t.dataset.previewSheet){previewSheet=t.dataset.previewSheet;render();}
  if(t.dataset.addStandard){state.quantities.push({id:crypto.randomUUID(),standardId:t.dataset.addStandard,location:'',length:1,count:1,basis:'',note:'',adjustment:'base',reviewed:false});active=3;render();}
  if(t.id==='add-material'){state.materials.push({id:crypto.randomUUID(),name:'',spec:'',unit:'개',price:0,quantity:1,date:'',source:'',note:''});render();}
  const list=active===3?'quantities':'materials';
@@ -146,7 +152,7 @@ document.addEventListener('click',async e=>{try{const t=e.target.closest('button
   download(workbook,`${state.project.name||'공사비 산정'}_설계내역서.xlsx`);message('설계내역서 Excel을 저장했습니다. 표지·원가계산서·집계표·설계내역서·일위대가표·물량산출근거·인건비산출기초·자재단가산출기초 시트가 수식으로 연결되어 있습니다.');
  }
  if(t.id==='security'){
- const entries=performance.getEntriesByType('resource');const allowed=['src/style.css?v=design-xlsx-1','vendor/jszip.min.js','src/engine.js?v=design-xlsx-1','src/standards.js?v=design-xlsx-1','src/commentary-data.js?v=design-xlsx-1','src/surcharges.js?v=design-xlsx-1','src/rate-sheet.js?v=design-xlsx-1','src/catalog-data.js','src/catalog-ui.js?v=design-xlsx-1','src/xlsx.js?v=design-xlsx-1','src/design-xlsx.js?v=design-xlsx-1','src/estimate-ui.js?v=design-xlsx-1','src/app.js?v=design-xlsx-1','src/basis-ui.js?v=design-xlsx-1'];
+ const entries=performance.getEntriesByType('resource');const allowed=['src/style.css?v=cost-preview-1','vendor/jszip.min.js','src/engine.js?v=cost-preview-1','src/standards.js?v=cost-preview-1','src/commentary-data.js?v=cost-preview-1','src/surcharges.js?v=cost-preview-1','src/rate-sheet.js?v=cost-preview-1','src/catalog-data.js','src/catalog-ui.js?v=cost-preview-1','src/xlsx.js?v=cost-preview-1','src/design-xlsx.js?v=cost-preview-1','src/estimate-ui.js?v=cost-preview-1','src/app.js?v=cost-preview-1','src/basis-ui.js?v=cost-preview-1'];
  const unexpected=entries.filter(r=>!allowed.some(a=>r.name===new URL(a,location.href).href) && !/^page-[0-9]{3}\.webp$/.test(r.name.startsWith(new URL('src/reference/',location.href).href)?r.name.slice(new URL('src/reference/',location.href).href.length):''));
  $('#security-result').textContent=`정적 리소스 ${entries.length}건 / 허용 목록 외 ${unexpected.length}건\nCSP connect-src 'none' 적용\n추가 검증은 README의 브라우저 네트워크 절차를 따르세요.`;
  }
