@@ -1,0 +1,10 @@
+dist/
+node_modules/
+*.xlsx
+*.xlsm
+*.pdf
+ict-project*.json
+*변경이력*.json
+work/
+
+/src/reference/

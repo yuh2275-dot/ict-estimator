@@ -1,0 +1,14 @@
+{
+  "name": "ict-estimator",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "build": "node build.cjs",
+    "pretest": "node restore-reference.cjs",
+    "prebuild": "node restore-reference.cjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
