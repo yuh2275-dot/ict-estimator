@@ -69,6 +69,102 @@
     const bundleFactor=(10+8*(runs-1))/10;
     return {runs,mode,bundleFactor,perCableFactor:bundleFactor/runs,quantityMultiplier:mode==='route'?runs:1};
   }
+  // 공종별 해설 조건: 2026 표준품셈 4-3-1~4-3-3 해설 (인쇄 90~92쪽). 그룹마다 하나를 선택하고, 서로 다른 해설 조건은 곱하여 기본 품을 만든다(1-2-2-15의 "해설란의 할증·감 요소가 감안된 품").
+  const choice=(id,name,factor)=>({id,name,factor});
+  const none=name=>choice('none',name,1);
+  const work=(basis,unused,reuse)=>({id:'work',name:'작업 구분',basis,demolition:true,choices:[none('신설'),choice('remove_unused',`철거 (불용) ${unused*100}%`,unused),choice('remove_reuse',`철거 (재사용) ${reuse*100}%`,reuse)]});
+  const countGroup=(id,name,basis,options)=>({id,name,basis,type:'count',...options});
+  const sequence=n=>(10+8*(n-1))/10;
+  const commentaryRules={
+    '4-3-1':{page:90,notes:['① 몰딩 설치는 3-5-3 몰딩(Molding) 적용','④ 성단은 4-3-3 별도 계상','⑨ 철가 및 케이블 포설포박은 5-1-1 기초설치(공통) 적용','⑪ 신호수·안전시설은 1-1-27-1 안전시설 적용'],groups:t=>[
+      /구내/.test(t)&&{id:'place',name:'설치 장소',basis:'해설 ①',choices:[none('관로 및 Pit (기본)'),choice('tray','벽잠핑·플로어덕트·케이블 트레이·랙 120%',1.2),choice('floor','바닥 노출 80%',.8)]},
+      /(^|[^0-9])100P/.test(t)&&countGroup('pairs','UTP·STP·FTP 실제 대수 (P)','해설 ②',{min:100,step:100,unit:'P',factor:n=>{if(n%100)throw Error('대수는 100P 단위로 입력하세요.');return sequence(n/100);},hint:'200P 180% · 300P 260% · 400P 340% · 400P 초과는 100P당 80% 가산'}),
+      {id:'bind',name:'포박',basis:'해설 ③',choices:[none('포박 없음'),choice('thread','포박실 포박 148%',1.48),choice('tie','케이블 타이 포박 110%',1.1)]},
+      {id:'cable',name:'케이블 형태',basis:'해설 ⑤⑥⑩',choices:[none('일반 케이블'),choice('figure8','8자 케이블 115% (⑤)',1.15),choice('armored','강대가 있는 케이블 120% (⑥)',1.2),choice('flexible','가요성 금속피 케이블 옥내 포설 150% (⑩, 앵커볼트 별도)',1.5)]},
+      /옥외/.test(t)&&{id:'support',name:'옥외 케이블',basis:'해설 ⑦',choices:[none('일반 (인입 클램프 포함)'),choice('self','자기지지형 120%',1.2)]},
+      work('해설 ⑫',.5,.9)]},
+    '4-3-2':{page:91,notes:['③ Outlet Box는 별도 계상 (4-3-3)','⑤ 철가 및 케이블 포설포박은 5-1-1 기초설치(공통) 적용'],groups:t=>[
+      /RS-?232/i.test(t)&&{id:'pins',name:'RS-232C 핀 수',basis:'해설 ①',choices:[none('10Pin 이하'),choice('pin11','11Pin 이상 130%',1.3)]},
+      /Modular|RJ45|Outlet|콘센트/i.test(t)&&{id:'shield',name:'케이블 종류',basis:'해설 ②',choices:[none('UTP'),choice('stp','STP·FTP용 Modular Jack 130%',1.3)]},
+      /Outlet|콘센트/i.test(t)&&countGroup('ports','Outlet 구수','해설 ③',{min:1,step:1,unit:'구',factor:n=>{if(n<=4)return 1+.2*(n-1);if(n%2)throw Error('4구 초과는 2구 단위(6구, 8구…)로 입력하세요. 그 외는 해설 계수 직접입력을 사용하세요.');return 1.6+.2*(n-4)/2;},hint:'1구 100% · 2구 120% · 3구 140% · 4구 160% · 4구 초과 2구당 20% 가산'}),
+      /RJ45|Plug/i.test(t)&&{id:'cat6',name:'등급',basis:'해설 ④',choices:[none('Cat5e 이하'),choice('cat6','Cat6 Modular 135%',1.35)]},
+      work('해설 ⑥',.3,.8)]},
+    '4-3-3':{page:92,notes:['④ 단순 도통시험은 Port당 통신케이블공·보통인부 각 0.01인, 링크성능 테스트는 회선시험 품셈 적용, 시험성적서는 Port당 통신관련산업기사 0.01인 가산 (별도 행으로 계상)','⑧ 철가 및 케이블 포설포박은 5-1-1 기초설치(공통) 적용'],groups:t=>{
+      const termination=/성\s*단/.test(t),install=!termination;
+      return [
+      install&&/Outlet\s*Box|Box\s*설\s*치/i.test(t)&&{id:'box',name:'Outlet Box 구수',basis:'해설 ①',choices:[none('4구 이하'),choice('box6','6구 130%',1.3),choice('box12','12구 (6구의 250%) 325%',3.25)]},
+      install&&/110\s*Block/i.test(t)&&countGroup('sets','동시 설치 세트 수','해설 ②',{min:1,step:1,unit:'세트',perUnit:true,factor:sequence,hint:'2세트 180% · 3세트 260% · 4세트 340% · 4세트 초과 1세트당 80% 가산. 수량은 전체 세트 수로 입력합니다.'}),
+      termination&&{id:'jelly',name:'성단 케이블',basis:'해설 ③',choices:[none('일반 케이블'),choice('jelly','젤리충진 케이블 150%',1.5)]},
+      install&&/Rack|랙/i.test(t)&&{id:'rackType',name:'랙 형식',basis:'해설 ⑤',choices:[none('고정형 (수평조정 포함)'),choice('mobile','이동형 20%',.2)]},
+      install&&/Patch\s*Panel|패치\s*패널/i.test(t)&&!/Cord/i.test(t)&&{id:'panel',name:'Patch Panel',basis:'해설 ⑥',choices:[none('현장조립 및 설치'),choice('assembled','조립된 Patch Panel 설치 70%',.7)]},
+      install&&/Rack|랙|M\s*D\s*F/i.test(t)&&countGroup('rows','동시 설치 열 수 (MDF·랙)','해설 ⑦',{min:1,step:1,unit:'열',perUnit:true,factor:sequence,hint:'2열 180% · 3열 260% · 4열 340% · 4열 초과 1열당 80% 가산. 수량은 전체 대수(열 수)로 입력합니다.'}),
+      work('해설 ⑨',.3,.8)];}}
+  };
+  // 4-3-1~4-3-3 외의 절은 tools/extract_commentary.cjs가 원문 [해 설]에서 자동 추출한 데이터(src/commentary-data.js)를 사용한다.
+  let extractedCatalog=null;
+  function extracted(){
+    if(extractedCatalog)return extractedCatalog;
+    extractedCatalog=root.commentaryCatalog||(typeof require==='function'?(()=>{try{return require('./commentary-data.js');}catch{return null;}})():null)||{sections:{}};
+    return extractedCatalog;
+  }
+  const shortText=(text,max=70)=>text.length>max?text.slice(0,max-1)+'…':text;
+  function extractedGroups(code,section){
+    const groups=[];
+    for(const g of section.groups){
+      const basis=`${code} 해설 ${g.ref} (인쇄 ${g.page}쪽) · 자동 추출`;
+      const common={key:`해설 ${g.ref}`,ref:g.ref,text:g.text,page:g.page,extracted:true,partial:g.partial};
+      if(g.type==='count'){
+        const hundred=g.unit==='×100P';
+        groups.push({...common,id:g.id,type:'count',name:`${g.ref} ${hundred?'100P 기준 배수':'동시 설치 '+g.unit+' 수'}`,basis,min:1,step:1,unit:hundred?'×100P':g.unit,perUnit:g.perUnit!==false,factor:sequence,
+          hint:g.perUnit!==false?'2 → 180%, 3 → 260%, 4 → 340%, 이후 1당 80% 가산. 수량은 전체 합계로 입력하며 1단위당 (비율 ÷ 개수)를 적용합니다.':'2 → 200P 180%, 3 → 300P 260%, 4 → 400P 340%, 이후 100P당 80% 가산'});
+        continue;
+      }
+      groups.push({...common,id:g.id,type:'choice',demolition:g.demolition,name:`${g.ref} ${shortText(g.text,40)}`,basis,choices:[none('해당 없음'),...g.choices.map(c=>choice(c.id,c.name,c.factor))]});
+    }
+    return groups;
+  }
+  function commentary(standard){
+    if(Number(standard?.year)!==2026)return {groups:[],notes:[],page:null,extracted:false};
+    const registered=new Set((standard.adjustments||[]).map(a=>String(a.basis||'').trim()));
+    const rule=commentaryRules[standard.code];
+    if(rule){
+      const text=`${standard.name||''} ${standard.spec||''}`.replace(/Patch\s*Panel\s*및\s*성단\s*등/i,''); // 4-3-3 절 제목(Patch Panel 및 성단 등)은 행 구분에 쓰지 않는다.
+      // 품셈에 같은 해설 번호의 계수가 이미 등록되어 있으면 중복 적용하지 않도록 그룹을 숨긴다.
+      const groups=rule.groups(text).filter(g=>g&&!registered.has(g.basis)).map(g=>({...g,basis:`${standard.code} ${g.basis} (인쇄 ${rule.page}쪽)`}));
+      return {groups,notes:rule.notes,page:rule.page,extracted:false};
+    }
+    const section=extracted().sections?.[standard.code];
+    if(!section)return {groups:[],notes:[],page:null,extracted:false};
+    const groups=extractedGroups(standard.code,section).filter(g=>!registered.has(g.key));
+    const notes=section.notes.map(n=>`${n.ref} ${n.kind==='common'?'[공통 할증 화면에서 선택] ':n.kind==='manual'?'[비율 확인 후 해설 계수 직접입력] ':''}${n.text}`);
+    const partial=section.groups.filter(g=>g.partial).map(g=>`${g.ref} [일부 비율은 자동 계수에서 제외 · 해설 계수 직접입력] ${g.text}`);
+    return {groups,notes:[...partial,...notes],page:(section.groups[0]||section.notes[0])?.page??null,extracted:true};
+  }
+  function commentaryFactors(standard,row){
+    const {groups}=commentary(standard),values=row.commentary??{};
+    if(typeof values!=='object'||Array.isArray(values))throw Error('공종 해설 조건 형식 오류');
+    const known=new Set(groups.map(g=>g.id));
+    for(const key of Object.keys(values))if(!known.has(key))throw Error(`이 공종에 없는 해설 조건입니다: ${key}`);
+    const applied=[];let factor=1,demolition=false;
+    for(const g of groups){
+      const raw=values[g.id];
+      if(g.type==='count'){
+        if(raw==null||raw==='')continue;
+        const n=Number(raw);
+        if(!Number.isInteger(n)||n<g.min||n>1e6||(g.step>1&&n%g.step))throw Error(`${g.name}: ${g.min}${g.unit} 이상 ${g.step>1?g.step+g.unit+' 단위':'정수'}로 입력하세요.`);
+        if(n===g.min)continue;
+        const total=g.factor(n),f=g.perUnit?total/n:total;
+        applied.push({group:g.id,name:`${g.name} ${n}${g.unit}`,factor:f,basis:`${g.basis}: ${Number((total*100).toFixed(4))}%${g.perUnit?` ÷ ${n} (수량 1단위당)`:''}`});
+        factor*=f;continue;
+      }
+      if(raw==null||raw==='none')continue;
+      const c=g.choices.find(c=>c.id===raw);
+      if(!c)throw Error(`${g.name}: 허용되지 않은 선택입니다.`);
+      if(g.demolition)demolition=true;
+      applied.push({group:g.id,name:c.name,factor:c.factor,basis:g.basis});factor*=c.factor;
+    }
+    return {factor,applied,demolition};
+  }
   function resolve(selection){
     const item=items.find(i=>i.id===selection.id);
     if(!item)throw Error('등록되지 않은 공통 할증');
@@ -111,11 +207,15 @@
     const laborPercent=selected.filter(i=>i.target==='labor').reduce((n,i)=>n+i.rate,0);
     const materialPercent=selected.filter(i=>i.target==='material').reduce((n,i)=>n+i.rate,0);
     const wagePercent=selected.reduce((n,i)=>n+(i.target==='wage'?i.rate:0)+(i.wageRate||0),0);
-    const laborFactor=finite(special.factor)*parallelWork.perCableFactor*(1+laborPercent/100),wageFactor=1+wagePercent/100;
+    const notes=commentaryFactors(standard,row);
+    if(notes.demolition&&row.materialPrice!=null&&row.materialPrice!=='')throw Error('철거 행에는 신규 재료 단가를 입력하지 마세요. 재료가 필요하면 신설 행을 따로 만드세요.');
+    if(notes.demolition&&materialPercent)throw Error('철거 행에는 재료 할증을 적용하지 않습니다.');
+    const laborFactor=finite(special.factor)*notes.factor*parallelWork.perCableFactor*(1+laborPercent/100),wageFactor=1+wagePercent/100;
     const parallelBasis=parallelWork.runs>1?`4-3-1 해설 ⑧ (인쇄 90쪽): ${parallelWork.runs}열 동시포설, 경로길이 기준 ×${parallelWork.bundleFactor} / 케이블 총길이 기준 ×(${parallelWork.bundleFactor}÷${parallelWork.runs}); 입력 기준: ${parallelWork.mode==='route'?'1열 경로길이':'케이블 총길이'}`:'';
-    return {id:special.id,name:[special.name,parallelWork.runs>1?`${parallelWork.runs}열 동시포설`:'',...selected.map(i=>i.name)].filter(Boolean).join(' / '),factor:laborFactor*wageFactor,laborFactor,wageFactor,laborPercent,wagePercent,materialPercent,materialFactor:1+materialPercent/100,specialFactor:Number(special.factor),selected,parallel:parallelWork,
-      basis:[special.basis,parallelBasis,...selected.map(i=>`${i.name} ${i.rate}%${i.wageRate?` + 노임 ${i.wageRate}%`:''} · ${i.basis}`),`공종계수 ${special.factor}${parallelWork.runs>1?` × 동시포설(${parallelWork.bundleFactor}÷${parallelWork.runs})`:''} × 품(1 + ${laborPercent}%) × 노임(1 + ${wagePercent}%)`].filter(Boolean).join(' / ')};
+    const commentaryText=notes.applied.map(a=>`×${Number(a.factor.toFixed(6))}`).join(' ');
+    return {id:special.id,name:[special.name,...notes.applied.map(a=>a.name),parallelWork.runs>1?`${parallelWork.runs}열 동시포설`:'',...selected.map(i=>i.name)].filter(Boolean).join(' / '),factor:laborFactor*wageFactor,laborFactor,wageFactor,laborPercent,wagePercent,materialPercent,materialFactor:1+materialPercent/100,specialFactor:Number(special.factor),commentaryFactor:notes.factor,commentary:notes.applied,demolition:notes.demolition,selected,parallel:parallelWork,
+      basis:[special.basis,...notes.applied.map(a=>`${a.name} · ${a.basis}`),parallelBasis,...selected.map(i=>`${i.name} ${i.rate}%${i.wageRate?` + 노임 ${i.wageRate}%`:''} · ${i.basis}`),`공종계수 ${special.factor}${notes.applied.length?` × 해설 조건(${commentaryText})`:''}${parallelWork.runs>1?` × 동시포설(${parallelWork.bundleFactor}÷${parallelWork.runs})`:''} × 품(1 + ${laborPercent}%) × 노임(1 + ${wagePercent}%)`].filter(Boolean).join(' / ')};
   }
-  root.Surcharges={groups,items,resolve,combined,parallel,supportsParallel};
+  root.Surcharges={groups,items,resolve,combined,parallel,supportsParallel,commentary,commentaryFactors};
   if(typeof module!=='undefined')module.exports=root.Surcharges;
 })(globalThis);
