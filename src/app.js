@@ -49,7 +49,11 @@ function validate(next){
  date(next.project.date);Estimator.number(next.project.year);
  for(const k of ['materials','quantities','wages','rates','standards'])if(!Array.isArray(next[k])||next[k].length>50000)throw Error('목록 형식 또는 허용 건수 오류');
  for(const s of next.standards){
- if(!s.id||!s.source||!Array.isArray(s.labor)||!Array.isArray(s.adjustments)||s.baseQuantity<=0)throw Error('품셈 구조 오류');
+ if(!s.id||!s.source||!Array.isArray(s.labor)||s.baseQuantity<=0)throw Error('품셈 구조 오류');
+ if(s.adjustments==null||Array.isArray(s.adjustments)&&s.adjustments.length===0){
+  s.adjustments=[{id:'base',name:'기본 조건',factor:1,basis:s.code+' 본문 표'}];
+ }
+ if(!Array.isArray(s.adjustments))throw Error('할증 목록 형식 오류');
  Estimator.number(s.year);Estimator.number(s.page);Estimator.number(s.baseQuantity);
  for(const l of s.labor){text(l.trade);Estimator.number(l.base);}
  for(const a of s.adjustments){text(a.id);text(a.name);text(a.basis);Estimator.number(a.factor);}
@@ -115,7 +119,7 @@ document.addEventListener('click',async e=>{try{const t=e.target.closest('button
  if(t.id==='export'){if(!template)throw Error('먼저 빈 XLSX 양식을 연결하세요.');if(!state.project.name)throw Error('공사명을 입력하세요.');const out=await ExcelIO.write(template,state,Estimator.calculate(state));globalThis.lastAudit=out.changes;download(out.blob,'설계내역서.xlsx');message('파일 생성 완료. Excel에서 수량을 변경해 재계산을 확인하세요.');}
  if(t.id==='audit'){if(!globalThis.lastAudit)throw Error('먼저 Excel을 생성하세요.');saveJson(lastAudit,'수식변경이력.json');}
  if(t.id==='security'){
- const entries=performance.getEntriesByType('resource');const allowed=['src/style.css','vendor/jszip.min.js','src/engine.js','src/standards.js','src/catalog-data.js','src/catalog-ui.js','src/xlsx.js','src/app.js','src/app.js?v=rate-settings-1'];
+ const entries=performance.getEntriesByType('resource');const allowed=['src/style.css','vendor/jszip.min.js','src/engine.js','src/standards.js','src/catalog-data.js','src/catalog-ui.js','src/catalog-ui.js?v=optional-adjustment-1','src/xlsx.js','src/app.js','src/app.js?v=optional-adjustment-1'];
  const unexpected=entries.filter(r=>!allowed.some(a=>r.name===new URL(a,location.href).href) && !/^page-[0-9]{3}\.webp$/.test(r.name.startsWith(new URL('src/reference/',location.href).href)?r.name.slice(new URL('src/reference/',location.href).href.length):''));
  $('#security-result').textContent=`정적 리소스 ${entries.length}건 / 허용 목록 외 ${unexpected.length}건\nCSP connect-src 'none' 적용\n추가 검증은 README의 브라우저 네트워크 절차를 따르세요.`;
  }

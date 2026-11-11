@@ -55,8 +55,11 @@ test('catalog entry points support search, source review and registration with a
  assert.match(ui.render({standards:[]}),/page-120\.webp/);
  click({reviewDraft:'p120-t1-r2-l1'});click({},'catalog-commit');
  assert.equal(registered.length,0);assert.match(messages.at(-1),/원문 대조/);
+ listeners.input.forEach(fn=>fn({target:{dataset:{editor:'conditions'},type:'text',value:' '}}));
  listeners.input.forEach(fn=>fn({target:{dataset:{},id:'catalog-review',checked:true}}));
  click({},'catalog-commit');assert.equal(registered.length,1);assert.equal(registered[0].reviewStatus,'user-reviewed');
+ assert.equal(registered[0].conditions,'');
+ assert.equal(registered[0].adjustments.find(a=>a.id==='base').factor,1);
  assert.equal(registered[0].sourceHash,data.sha256);
  click({catalogSection:data.sections.find(s=>s.deleted).code});
  assert.doesNotMatch(ui.render({standards:[]}),/id="catalog-new"/);
@@ -100,4 +103,22 @@ test('settings apply the offered rate example and accept the earlier wrapped for
  assert.match(element('#config-status').textContent,/1건을 적용/);
  await click('',{nav:'7'});
  assert.match(element('#view').innerHTML,/간접노무비.*5%/);
+});
+test('settings supply the base adjustment when a standard has no surcharges',async()=>{
+ const {element,click}=startApp();
+ await click('',{nav:'10'});
+ element('#config-type').value='standards';
+ await click('load-config');
+ const standards=JSON.parse(element('#config').value);
+ const existing=structuredClone(standards[0].adjustments);
+ delete standards[1].adjustments;
+ standards[2].adjustments=[];
+ element('#config').value=JSON.stringify(standards);
+ await click('apply-config');
+ assert.match(element('#config-status').textContent,/건을 적용/);
+ const saved=JSON.parse(element('#config').value);
+ assert.deepEqual(saved[0].adjustments,existing);
+ for(const standard of saved.slice(1,3)){
+  assert.deepEqual(standard.adjustments.map(a=>[a.id,a.factor]),[['base',1]]);
+ }
 });

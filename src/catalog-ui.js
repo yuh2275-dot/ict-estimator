@@ -33,9 +33,9 @@
       <p class="muted">예를 들어 표가 10m당 품량이면 입력 단위는 m, 기준수량은 10입니다. 직종 이름은 노임단가표와 같아야 합니다.</p>
       <div class="scroll"><table><thead><tr><th>직종</th><th>기준수량당 기본품 (인)</th><th>행</th></tr></thead><tbody>${editor.labor.map((l,i)=>`<tr><td><input data-labor="${i}" data-field="trade" value="${escape(l.trade)}"></td><td><input type="number" min="0" step="any" data-labor="${i}" data-field="base" value="${escape(l.base)}"></td><td><button data-remove-labor="${i}">삭제</button></td></tr>`).join('')}</tbody></table></div>
       <button id="catalog-add-labor">직종 추가</button>
-      ${field('conditions','적용 조건·포함 작업·별도 계상·제외 조건',editor.conditions)}
+      ${field('conditions','적용 조건·포함 작업·별도 계상·제외 조건 (선택)',editor.conditions)}
       <label><input id="catalog-review" type="checkbox" ${editor.reviewed?'checked':''}> 표의 규격·직종·품량·기준단위와 해당 해설 및 공통 적용기준을 확인했습니다.</label>
-      <p>기본 조건으로 등록합니다. 조건 변경이나 복합 할증이 필요하면 원문 근거를 확인해 설정에서 별도 계수를 등록하세요.</p>
+      <p>할증이 없으면 적용 조건을 비워 두세요. 기본 품에 계수 1을 적용합니다.</p>
       <div class="toolbar"><button class="primary" id="catalog-commit">검토한 계산항목 등록</button><button id="catalog-cancel">편집 닫기</button></div></div>`;
   }
 
@@ -81,13 +81,13 @@
   }
   function commit() {
     if (!editor.reviewed) throw Error('원문 대조 확인이 필요합니다.');
-    if (!editor.name.trim() || !editor.spec.trim() || !editor.unit.trim() || !editor.conditions.trim()) throw Error('공종·규격·단위·적용 조건을 입력하세요.');
+    if (!editor.name.trim() || !editor.spec.trim() || !editor.unit.trim()) throw Error('공종·규격·단위를 입력하세요.');
     const baseQuantity=Estimator.number(editor.baseQuantity);
     if (!baseQuantity || !editor.labor.length) throw Error('기준수량과 직종별 기본품이 필요합니다.');
     const labor=editor.labor.map(l=>({trade:l.trade.trim(),base:Estimator.number(l.base)}));
     if (labor.some(l=>!l.trade) || new Set(labor.map(l=>l.trade)).size!==labor.length) throw Error('직종명 누락 또는 중복입니다.');
     if (!labor.some(l=>l.base>0)) throw Error('기본품을 입력하세요.');
-    const standard={...editor,id:'reviewed-'+crypto.randomUUID(),baseQuantity,labor,unitUnresolved:false,verified:true,reviewStatus:'user-reviewed',reviewedAt:new Date().toISOString(),sourceHash:data.sha256};
+    const standard={...editor,id:'reviewed-'+crypto.randomUUID(),baseQuantity,labor,conditions:editor.conditions?.trim()??'',unitUnresolved:false,verified:true,reviewStatus:'user-reviewed',reviewedAt:new Date().toISOString(),sourceHash:data.sha256};
     delete standard.reviewed;
     host.register(standard);
     editor=null;refresh();host.message('원문 대조한 계산항목을 등록했습니다. 해당 직종의 적용일 노임단가도 등록하세요.');
