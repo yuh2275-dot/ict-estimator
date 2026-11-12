@@ -86,7 +86,7 @@
     '4-3-2':{page:91,notes:['③ Outlet Box는 별도 계상 (4-3-3)','⑤ 철가 및 케이블 포설포박은 5-1-1 기초설치(공통) 적용'],groups:t=>[
       /RS-?232/i.test(t)&&{id:'pins',name:'RS-232C 핀 수',basis:'해설 ①',choices:[none('10Pin 이하'),choice('pin11','11Pin 이상 130%',1.3)]},
       /Modular|RJ45|Outlet|콘센트/i.test(t)&&{id:'shield',name:'케이블 종류',basis:'해설 ②',choices:[none('UTP'),choice('stp','STP·FTP용 Modular Jack 130%',1.3)]},
-      /Outlet|콘센트/i.test(t)&&countGroup('ports','Outlet 구수','해설 ③',{min:1,step:1,unit:'구',factor:n=>{if(n<=4)return 1+.2*(n-1);if(n%2)throw Error('4구 초과는 2구 단위(6구, 8구…)로 입력하세요. 그 외는 추가 배율 직접입력을 사용하세요.');return 1.6+.2*(n-4)/2;},hint:'1구 100% · 2구 120% · 3구 140% · 4구 160% · 4구 초과 2구당 20% 가산'}),
+      /Outlet|콘센트/i.test(t)&&countGroup('ports','Outlet 구수','해설 ③',{min:1,step:1,unit:'구',perPort:true,factor:n=>{if(n<=4)return 1+.2*(n-1);if(n%2)throw Error('4구 초과는 2구 단위(6구, 8구…)로 입력하세요. 그 외는 추가 배율 직접입력을 사용하세요.');return 1.6+.2*(n-4)/2;},hint:'1구 100% · 2구 120% · 3구 140% · 4구 160% · 4구 초과 2구당 20% 가산. 노무 수량은 포트 수(콘센트 개수 × 구수)로 셉니다. 수량에는 콘센트 개수를 입력하세요.'}),
       /RJ45|Plug/i.test(t)&&{id:'cat6',name:'등급',basis:'해설 ④',choices:[none('Cat5e 이하'),choice('cat6','Cat6 Modular 135%',1.35)]},
       work('해설 ⑥',.3,.8)]},
     '4-3-3':{page:92,notes:['④ 단순 도통시험은 Port당 통신케이블공·보통인부 각 0.01인, 링크성능 테스트는 회선시험 품셈 적용, 시험성적서는 Port당 통신관련산업기사 0.01인 가산 (별도 행으로 계상)','⑧ 철가 및 케이블 포설포박은 5-1-1 기초설치(공통) 적용'],groups:t=>{
@@ -153,8 +153,9 @@
         const n=Number(raw);
         if(!Number.isInteger(n)||n<g.min||n>1e6||(g.step>1&&n%g.step))throw Error(`${g.name}: ${g.min}${g.unit} 이상 ${g.step>1?g.step+g.unit+' 단위':'정수'}로 입력하세요.`);
         if(n===g.min)continue;
-        const total=g.factor(n),f=g.perUnit?total/n:total;
-        applied.push({group:g.id,name:`${g.name} ${n}${g.unit}`,factor:f,basis:`${g.basis}: ${Number((total*100).toFixed(4))}%${g.perUnit?` ÷ ${n} (수량 1단위당)`:''}`});
+        // perPort: 노무 수량을 포트 수로 센다(사용자 결정, 2026-11-12). 콘센트 1개 = n포트이므로 계수에 n을 곱한다. 재료비는 콘센트 개수 기준 그대로.
+        const total=g.factor(n),f=g.perUnit?total/n:g.perPort?total*n:total;
+        applied.push({group:g.id,name:`${g.name} ${n}${g.unit}${g.perPort?` (포트 ${n} × ${Number((total*100).toFixed(4))}%)`:''}`,factor:f,basis:`${g.basis}: ${Number((total*100).toFixed(4))}%${g.perUnit?` ÷ ${n} (수량 1단위당)`:''}${g.perPort?` × 포트 ${n} (포트 수 산정: 콘센트 1개 = ${n}포트)`:''}`});
         factor*=f;continue;
       }
       if(raw==null||raw==='none')continue;

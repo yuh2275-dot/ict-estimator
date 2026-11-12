@@ -86,7 +86,9 @@
       } catch(e) { errors.push(rule.name + ' · ' + e.message); }
     }
     if (!state.ratesReviewed) errors.push('공사금액·기간·종류·기관별 제비율 검토 필요');
-    return {materials,labor,costs,expenseRows,material,directLabor,expense,total:material+directLabor+expense+costs.reduce((s,c)=>s+c.amount,0),errors};
+    // 총공사금액은 천원 미만을 절사한다(사용자 결정, 2026-11-12). 절사 전 금액은 totalBeforeCut.
+    const totalBeforeCut = material+directLabor+expense+costs.reduce((s,c)=>s+c.amount,0);
+    return {materials,labor,costs,expenseRows,material,directLabor,expense,totalBeforeCut,total:Math.floor(totalBeforeCut/1000)*1000,errors};
   }
   root.Estimator = {number,round,calculate,expenseAmount};
   if (typeof module !== 'undefined') module.exports = root.Estimator;
