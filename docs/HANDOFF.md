@@ -105,11 +105,12 @@ Codex에서 시작한 작업(UTP 동시포설, 커밋 `4fa5825`)을 Claude Code�
 <!-- AUTO-LOG:START -->
 ## 자동 기록 (머지할 때마다 GitHub Actions가 갱신, 직접 수정 금지)
 
-- 기준 커밋: `804bbf7` (2026-11-12)
-- 테스트: 통과 ?개 / 실패 ?개
+- 기준 커밋: `17e1e56` (2026-11-12)
+- 테스트: 통과 59개 / 실패 0개
 
 | 날짜 | PR | 제목 | 머지 커밋 |
 |---|---|---|---|
+| 2026-11-12 | [#10](https://github.com/yuh2275-dot/ict-estimator/pull/10) | 자동 기록의 테스트 결과가 "?"로 나오는 문제 수정 | `17e1e56` |
 | 2026-11-12 | [#8](https://github.com/yuh2275-dot/ict-estimator/pull/8) | 인계 문서(docs/HANDOFF.md) 자동 갱신 장치 | `804bbf7` |
 | 2026-11-12 | [#7](https://github.com/yuh2275-dot/ict-estimator/pull/7) | CLAUDE.md 추가 (AGENTS.md 자동 로드) | `707313a` |
 | 2026-11-12 | [#6](https://github.com/yuh2275-dot/ict-estimator/pull/6) | Codex 인계 문서 추가 (AGENTS.md, docs/HANDOFF.md) | `07761c3` |
