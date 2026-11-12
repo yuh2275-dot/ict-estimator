@@ -208,11 +208,12 @@ UTP 동시포설(커밋 `4fa5825`) 이후 공종 해설·설계내역서·원가
 <!-- AUTO-LOG:START -->
 ## 자동 기록 (머지할 때마다 GitHub Actions가 갱신, 직접 수정 금지)
 
-- 기준 커밋: `3465229` (2026-11-12)
+- 기준 커밋: `a891bbd` (2026-11-12)
 - 테스트: 통과 76개 / 실패 0개
 
 | 날짜 | PR | 제목 | 머지 커밋 |
 |---|---|---|---|
+| 2026-11-12 | [#15](https://github.com/yuh2275-dot/ict-estimator/pull/15) | AGENTS.md: 작업 시작 전 인계 문서 확인 규칙 추가 | `a891bbd` |
 | 2026-11-12 | [#14](https://github.com/yuh2275-dot/ict-estimator/pull/14) | 3장·4장 품셈 원문 대조 등록(779개) + 자재 구성(부자재·부속품률) | `3465229` |
 | 2026-11-12 | [#13](https://github.com/yuh2275-dot/ict-estimator/pull/13) | 도면 물량 가져오기 (Claude·ChatGPT 연동) + 해설 조건 곱하기 결정 기록 | `4fd1fe1` |
 | 2026-11-12 | [#12](https://github.com/yuh2275-dot/ict-estimator/pull/12) | 정보콘센트 포트 수 산정 + 총공사금액 천원 미만 절사 | `5b2c55d` |
