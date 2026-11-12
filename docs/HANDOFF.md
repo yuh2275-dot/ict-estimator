@@ -1,6 +1,6 @@
 # 작업 인계 (2026-11-12)
 
-Codex에서 시작한 작업(UTP 동시포설, 커밋 `4fa5825`)을 Claude Code에서 이어 받아 PR 5개를 머지했습니다. 모두 `main`에 반영되어 GitHub Pages에 배포되었습니다. 현재 `main`은 `ef489b5`이고, 테스트 59개가 통과합니다.
+UTP 동시포설(커밋 `4fa5825`) 이후 공종 해설·설계내역서·원가계산 미리보기와 인계 문서 관리 기능이 `main`에 반영되었습니다. 이 문서는 PR #9의 수량 행 자재명·자재 규격 추가 작업을 포함합니다. PR #9는 검토·머지 대기 중이며, 구현 검증에서 전체 테스트 60개와 정적 빌드가 통과했습니다.
 
 배포 주소: https://yuh2275-dot.github.io/ict-estimator/
 
@@ -14,9 +14,11 @@ Codex에서 시작한 작업(UTP 동시포설, 커밋 `4fa5825`)을 Claude Code�
 | [#4](https://github.com/yuh2275-dot/ict-estimator/pull/4) | 원가계산서를 사용자 예시 양식에 맞춤: (A)~(H) 기호, 구성비, 간접재료비 행, 천원 미만 절사 | `src/design-xlsx.js` |
 | [#5](https://github.com/yuh2275-dot/ict-estimator/pull/5) | 공사원가계산 화면에 시트 미리보기 탭. 노임을 등록하면 확인 체크 전에도 노무비 자동 계산 | `src/engine.js`(`wageFor`), `src/app.js`(`costSheet`), `src/design-xlsx.js`(`toHtml`) |
 | #6, #7 | 인계 문서 `AGENTS.md`, `docs/HANDOFF.md`, `CLAUDE.md`(AGENTS.md 자동 로드) | 문서 |
-| (이번 PR) | **인계 문서 자동 갱신 장치** — 아래 2.4 | `tools/handoff-status.cjs`, `tools/update-handoff-log.cjs`, `.github/workflows/handoff-*.yml`, `.claude/` |
+| [#8](https://github.com/yuh2275-dot/ict-estimator/pull/8) | **인계 문서 자동 갱신 장치** — 아래 2.4 | `tools/handoff-status.cjs`, `tools/update-handoff-log.cjs`, `.github/workflows/handoff-*.yml`, `.claude/` |
 
-[PR #9](https://github.com/yuh2275-dot/ict-estimator/pull/9)에서 수량 행 자재명·자재 규격을 추가했습니다. 검토 후 머지합니다.
+### 검토 대기 중인 변경
+
+[PR #9](https://github.com/yuh2275-dot/ict-estimator/pull/9)는 수량 행의 자재명·자재 규격 입력과 설계내역서·자재단가산출기초 반영을 구현했습니다. 관련 파일은 `src/estimate-ui.js`, `src/app.js`, `src/engine.js`, `src/design-xlsx.js`, `index.html`, `tests/design-xlsx.test.cjs`입니다.
 
 ## 2. 동작 요약
 
@@ -69,9 +71,14 @@ Codex에서 시작한 작업(UTP 동시포설, 커밋 `4fa5825`)을 Claude Code�
 
 ### 2.5 수량 행 자재명·자재 규격
 - 공사비 산정과 수량산출에서 `materialName`과 `materialSpec`을 편집하고 작업 JSON에 저장합니다.
-- 연결된 재료비 행의 설계내역서와 자재단가산출기초에 반영합니다. 값이 없거나 공백이면 해당 필드의 품셈 공종명 또는 규격을 사용합니다.
+- 연결된 재료비 행의 설계내역서와 자재단가산출기초에 반영하며, 같은 통합문서를 사용하는 화면 미리보기에도 표시됩니다.
+- `materialName`과 `materialSpec`은 각각 앞뒤 공백을 제거해 사용합니다. 값이 없거나 공백이면 해당 필드의 품셈 공종명 또는 규격을 사용하므로 기존 작업 JSON도 열 수 있습니다.
+- 예를 들어 UTP 포설 행에 자재명 `UTP 케이블`, 자재 규격 `CAT.6 4P`를 입력하면 두 시트의 재료비 품명·규격에 표시됩니다.
+- 수정한 스크립트의 캐시 버전은 `material-fields-1`이며, `index.html`과 보안 점검 허용 목록에 반영했습니다.
 
 ## 3. 사용자 확인이 필요한 해석 (아직 답을 받지 못함)
+
+사용자가 아래 세 항목에 답변할 예정입니다. 답변을 받은 뒤 각 결정과 적용 결과를 이 절에 기록합니다.
 
 1. **해설 조건 결합 방식**: 원문에 명시가 없어 서로 다른 해설 조건을 **곱해서** 적용합니다(예: 트레이 1.2 × 케이블타이 1.1). 근거는 1-2-2-15 "기본 품: 각 장 해설란의 할증·감 요소가 감안된 품"입니다. 발주처 기준이 합산이면 `commentaryFactors`의 곱셈을 바꿔야 합니다.
 2. **정보콘센트 구수 산정**: 사용자 예시 엑셀은 6구 콘센트를 포트 수(12)로 세고 180%를 곱합니다. 앱은 원문 4-3-2 단위(개)대로 콘센트 1개당 ×1.8입니다. 이 차이를 사용자에게 알렸고, 결정은 아직 받지 못했습니다.
@@ -91,12 +98,21 @@ Codex에서 시작한 작업(UTP 동시포설, 커밋 `4fa5825`)을 Claude Code�
 ## 5. 다음 작업 후보 (우선순위 순)
 
 1. 사용자 결정 반영: 3장의 1~3번
-2. 수량 행에 **자재명·자재 규격** 필드를 추가하고, 설계내역서·자재단가산출기초에 반영했습니다. PR #9 검토 대기.
+2. 수량 행 **자재명·자재 규격** 추가 구현 완료. 전체 테스트 60개와 정적 빌드 통과. PR #9 사용자 검토·머지 대기.
 3. 4-4(제어케이블) 등 많이 쓰는 장부터 자동 추출 해설을 **수작업 규칙**(`commentaryRules`)으로 옮기기. 행별 적용 범위를 지정하고 테스트를 추가합니다.
 4. 노임 적용기간 일괄 수정 기능을 만듭니다. 엑셀에서 가져온 노임의 기본 기간(2026-01-01~08-31)이 하반기 공사와 맞지 않는 문제가 실제로 있었습니다.
 5. SECURITY.md 검증 기록 갱신
 
 ## 6. 검증 방법
+
+### PR #9 구현 검증 기록 (2026-11-12)
+- `node restore-reference.cjs`로 원문 이미지 587개 복원·검증 완료.
+- `node --test tests/*.test.cjs` 결과 60개 통과, 실패 0개.
+- `node build.cjs` 정적 빌드 성공.
+- 추가 회귀 테스트에서 두 시트의 자재명·자재 규격 출력, 앞뒤 공백 처리, 빈 자재명의 공종명 대체, 별도 등록 자재 출력을 확인했습니다. 기존 테스트로 수량·단가 수식 연결을 확인했습니다.
+- 이번 구현 검증은 Node 테스트와 빌드까지 완료했습니다. 브라우저 직접 조작과 LibreOffice 재계산은 후속 확인 항목입니다.
+
+### 재현 절차와 이전 검증 기록
 
 - 단위 테스트: `node --test tests/*.test.cjs`
   - `tests/design-xlsx.test.cjs`: 엑셀 레이아웃·수식 연결
