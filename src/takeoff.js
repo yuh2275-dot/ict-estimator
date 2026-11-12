@@ -148,7 +148,8 @@ ${lines.join('\n')||'- (등록된 품셈 없음: code·name·spec으로 적어 �
   function apply(state,result,{fillProject=true}={}){
     const next=structuredClone(state);
     const picked=result.rows.filter(r=>r.selected&&r.row.standardId);
-    next.quantities.push(...picked.map(r=>r.row));
+    const R=root.MaterialRecipes,book=R?R.priceBook(state):null;
+    next.quantities.push(...picked.map(r=>{const recipe=R&&r.standard?R.forStandard(r.standard)[0]:null;return recipe?R.apply(r.row,recipe,{book,ports:r.row.commentary?.ports}):r.row;}));
     if(result.includeMaterials!==false)next.materials.push(...result.materials);
     if(fillProject&&result.project)for(const k of ['name','location','summary'])if(!next.project[k]&&typeof result.project[k]==='string')next.project[k]=result.project[k].slice(0,500);
     return {next,added:picked.length,materials:result.includeMaterials!==false?result.materials.length:0};
