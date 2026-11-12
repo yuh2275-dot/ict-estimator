@@ -2,7 +2,7 @@
   'use strict';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money = value => value.toLocaleString('ko-KR');
-  const newLine = () => ({standardId:'',length:1,count:1,adjustment:'base',surcharges:[],commentary:{},parallelRuns:1,parallelQuantityMode:'total',reviewed:false,materialPrice:null});
+  const newLine = () => ({standardId:'',length:1,count:1,adjustment:'base',surcharges:[],commentary:{},parallelRuns:1,parallelQuantityMode:'total',reviewed:false,materialName:'',materialSpec:'',materialPrice:null});
   let line = newLine(), lineIndex = -1;
   let quantityInput = null;
   let expenseEditor = null;
@@ -117,11 +117,12 @@
       <label class="field">공종 해설 계수 (등록 조건)<select name="adjustment">${(selected?.adjustments||[{id:'base',name:'기본 조건',factor:1}]).map(a=>`<option value="${esc(a.id)}" ${a.id===line.adjustment?'selected':''}>${esc(a.name)} × ${a.factor}</option>`).join('')}<option value="custom" ${line.adjustment==='custom'?'selected':''}>추가 배율 직접입력 (아래 선택지에 없는 해설만)</option></select></label>
       ${line.adjustment==='custom'?field('추가 배율 (1 = 없음 · 130% → 1.3)','standardFactor',line.standardFactor,'number',true)+field('추가 배율 근거 (해설 번호·원문)','standardFactorBasis',line.standardFactorBasis,'text',true):''}
       </div>${line.adjustment==='custom'?customWarning(selected):''}<div class="estimate-fields">
+      ${field('자재명','materialName',line.materialName)}${field('자재 규격','materialSpec',line.materialSpec)}
       ${field('재료 단가 출처','materialSource',line.materialSource)}
       </div>${selected?.conditions?`<details><summary>적용 조건</summary>${esc(selected.conditions)}</details>`:''}${commentaryEditor(selected)}${parallelEditor(selected)}${surchargeEditor(selected)}
       <div class="toolbar"><label><input type="checkbox" name="reviewed" ${line.reviewed?'checked':''}> 품셈·적용 조건 확인</label><button type="submit" class="primary">${lineIndex<0?'항목 저장':'수정 저장'}</button>${lineIndex<0?'':'<button type="button" id="estimate-cancel-line">취소</button>'}</div></form>
-      <div class="scroll"><table><thead><tr><th>공종</th><th>규격</th><th>단위</th><th>수량</th><th>재료 단가</th><th>재료비</th><th>노무비</th><th>할증</th><th>관리</th></tr></thead><tbody>
-      ${state.quantities.map((q,i)=>{const s=byId.get(q.standardId);let a;try{a=Surcharges.combined(s,q);}catch{}return `<tr><td>${esc(s?.name)}</td><td>${esc(s?.spec)}</td><td>${esc(s?.unit)}</td><td class="num">${money(q.length*q.count*(a?.parallel.quantityMultiplier??1))}${a?.parallel.runs>1?`<small>${a.parallel.runs}열 · 경로 ${money(q.length*q.count*(a.parallel.quantityMultiplier)/a.parallel.runs)}m</small>`:''}</td><td class="num">${q.materialPrice==null?'—':money(Number(q.materialPrice))}</td><td class="num">${money(materials.get(q.id)||0)}</td><td class="num">${labor.has(q.id)?money(labor.get(q.id)):'검토 필요'}</td><td><details><summary>${a?`${a.parallel.runs>1?a.parallel.runs+'열 · ':''}노무비 ×${Number(a.factor.toFixed(6))} / 재료 ×${a.materialFactor}`:'검토 필요'}</summary>${esc(a?.basis)}</details></td><td class="estimate-row-actions">${rowButtons(i)}</td></tr>`;}).join('')||'<tr><td colspan="9" class="muted">저장한 공종 없음</td></tr>'}
+      <div class="scroll"><table><thead><tr><th>공종</th><th>규격</th><th>단위</th><th>수량</th><th>자재명</th><th>자재 규격</th><th>재료 단가</th><th>재료비</th><th>노무비</th><th>할증</th><th>관리</th></tr></thead><tbody>
+      ${state.quantities.map((q,i)=>{const s=byId.get(q.standardId);let a;try{a=Surcharges.combined(s,q);}catch{}return `<tr><td>${esc(s?.name)}</td><td>${esc(s?.spec)}</td><td>${esc(s?.unit)}</td><td class="num">${money(q.length*q.count*(a?.parallel.quantityMultiplier??1))}${a?.parallel.runs>1?`<small>${a.parallel.runs}열 · 경로 ${money(q.length*q.count*(a.parallel.quantityMultiplier)/a.parallel.runs)}m</small>`:''}</td><td>${esc(q.materialName)||'—'}</td><td>${esc(q.materialSpec)||'—'}</td><td class="num">${q.materialPrice==null?'—':money(Number(q.materialPrice))}</td><td class="num">${money(materials.get(q.id)||0)}</td><td class="num">${labor.has(q.id)?money(labor.get(q.id)):'검토 필요'}</td><td><details><summary>${a?`${a.parallel.runs>1?a.parallel.runs+'열 · ':''}노무비 ×${Number(a.factor.toFixed(6))} / 재료 ×${a.materialFactor}`:'검토 필요'}</summary>${esc(a?.basis)}</details></td><td class="estimate-row-actions">${rowButtons(i)}</td></tr>`;}).join('')||'<tr><td colspan="11" class="muted">저장한 공종 없음</td></tr>'}
       </tbody></table></div></section>
       <div class="estimate-expenses">${expenseSection('machine',expenseRows.filter(x=>x.row.kind==='machine'))}${expenseSection('other',expenseRows.filter(x=>x.row.kind==='other'))}</div>
       <section class="card estimate-footer"><div><small>검토 중 공사비</small><strong>${money(result.total)}원</strong></div><div class="toolbar"><button data-nav="10">노임·제비율 설정</button><button class="primary" id="estimate-calculate">산정하기</button></div></section>`;
@@ -169,6 +170,7 @@
         const changed=quantity!==line.length*line.count;
         const row={location:'',basis:'',note:'',...line,id:line.id||crypto.randomUUID(),
           length:changed?quantity:line.length,count:changed?1:line.count,
+          materialName:value('materialName').trim(),materialSpec:value('materialSpec').trim(),
           materialPrice:value('materialPrice')===''?null:Estimator.number(value('materialPrice')),
           materialSource:value('materialSource'),adjustment:value('adjustment')||'base',reviewed:values.has('reviewed')};
         if(row.adjustment==='custom'){row.standardFactor=Estimator.number(value('standardFactor'));row.standardFactorBasis=value('standardFactorBasis');}
@@ -213,6 +215,8 @@
     if(target.form?.id!=='estimate-line')return;
     if(target.name==='quantity')quantityInput=target.value;
     if(target.name==='materialPrice')line.materialPrice=target.value===''?null:Number(target.value);
+    if(target.name==='materialName')line.materialName=target.value;
+    if(target.name==='materialSpec')line.materialSpec=target.value;
     if(target.name==='materialSource')line.materialSource=target.value;
     if(target.name==='adjustment')line.adjustment=target.value;
     if(target.name==='reviewed')line.reviewed=target.checked;

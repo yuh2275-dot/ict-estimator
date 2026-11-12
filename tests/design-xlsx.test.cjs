@@ -55,3 +55,23 @@ test('rounding mode and empty optional sections are handled',()=>{
   const t=fresh();t.rates=[];const v=view(t);
   assert.equal(v.cell('원가계산서','D7').formula,'SUM(D5:D6)');assert.equal(v.cell('원가계산서','C9').value,'간 접 노 무 비');
 });
+
+test('linked materials use quantity-row labels with independent fallback to the standard',()=>{
+  const state=fresh();
+  const [cable,outlet]=state.quantities;
+  Object.assign(cable,{materialName:'  UTP 케이블  ',materialSpec:' CAT.6 4P '});
+  Object.assign(outlet,{materialName:'  ',materialSpec:'6구'});
+  const {r,cell,sheet}=view(state);
+  const cableStandard=r.labor.find(row=>row.id===cable.id).standard;
+  const outletStandard=r.labor.find(row=>row.id===outlet.id).standard;
+
+  for(const [name,cableRow,outletRow] of [['설계내역서',8,9],['자재단가산출기초',4,5]]){
+    assert.equal(cell(name,'A'+cableRow).value,'UTP 케이블');
+    assert.equal(cell(name,'B'+cableRow).value,'CAT.6 4P');
+    assert.equal(cell(name,'A'+outletRow).value,outletStandard.name);
+    assert.equal(cell(name,'B'+outletRow).value,'6구');
+    assert.ok([...sheet(name).cells.values()].some(cell=>cell.value==='난연 CD관'));
+  }
+  assert.equal(cell('물량산출근거','A4').value,cableStandard.name);
+  assert.equal(cell('일위대가표','B6').value,cableStandard.spec);
+});

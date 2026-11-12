@@ -112,8 +112,8 @@
     ['품   명','규   격','단   위','단   가','비   고'].forEach((h,i)=>ms.set(colName(i)+'3',h,S.head));
     const materials=[...result.labor.filter(l=>linked.has(l.id)).map(l=>({m:linked.get(l.id),row:l})),...looseMaterials.map(m=>({m,row:null}))];
     const priceRef=new Map();r=4;
-    for(const {m,row} of materials){
-      ms.set('A'+r,row?row.standard.name:m.name).set('B'+r,row?row.standard.spec:m.spec).set('C'+r,row?row.standard.unit:m.unit,S.center).set('D'+r,num(Number(m.price)),S.money).set('E'+r,String(m.source||'').replace(/ · 재료 할증.*$/,''));
+    for(const {m} of materials){
+      ms.set('A'+r,m.name).set('B'+r,m.spec).set('C'+r,m.unit,S.center).set('D'+r,num(Number(m.price)),S.money).set('E'+r,String(m.source||'').replace(/ · 재료 할증.*$/,''));
       priceRef.set(m,'D'+r);r++;
     }
     mergeRuns(ms,4,r-1);
@@ -177,8 +177,8 @@
     const matStart=r;
     for(const {m,row} of materials){
       const factor=row?Number(m.materialFactor||1):1,q=qtyRef.get(row?row.id:m),qty=Number(m.quantity);
-      ds.set('A'+r,row?row.standard.name:m.name).set('B'+r,row?row.standard.spec:m.spec)
-        .set('C'+r,num(qty),S.qty,`물량산출근거!${q}${factor!==1?'*'+num(factor):''}`).set('D'+r,row?row.standard.unit:m.unit,S.center)
+      ds.set('A'+r,m.name).set('B'+r,m.spec)
+        .set('C'+r,num(qty),S.qty,`물량산출근거!${q}${factor!==1?'*'+num(factor):''}`).set('D'+r,m.unit,S.center)
         .set('E'+r,num(Number(m.price)),S.money,`자재단가산출기초!${priceRef.get(m)}`).set('F'+r,m.amount,S.money,`${RD}(C${r}*E${r},0)`)
         .set('I'+r,m.amount,S.money,`F${r}`).set('J'+r,factor!==1?`재료 할증 ${num((factor-1)*100)}% (1-1-6)`:'');
       blankRow(r);r++;
