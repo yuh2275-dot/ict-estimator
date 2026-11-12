@@ -83,7 +83,8 @@
     const project=state.project||{},title=project.name||'정보통신공사';
     const RD=state.rounding==='round'?'ROUND':'ROUNDDOWN';
     const round=n=>state.rounding==='round'?Math.round(n+Number.EPSILON):Math.floor(n+1e-8);
-    const linked=new Map(result.materials.filter(m=>m.quantityId).map(m=>[m.quantityId,m]));
+    // 한 수량 행에 주자재·부자재·부속품률 줄이 여러 개 있을 수 있다.
+    const linked=new Map();for(const m of result.materials.filter(m=>m.quantityId)){if(!linked.has(m.quantityId))linked.set(m.quantityId,[]);linked.get(m.quantityId).push(m);}
     const looseMaterials=result.materials.filter(m=>!m.quantityId);
 
     // ---------- 물량산출근거 ----------
@@ -110,10 +111,16 @@
     ms.set('A1','자   재   단   가   표',S.title).merge('A1:E1').height(1,30);
     ms.set('A2',`공사명 : ${title}`,S.note,'원가계산서!A3').merge('A2:E2');
     ['품   명','규   격','단   위','단   가','비   고'].forEach((h,i)=>ms.set(colName(i)+'3',h,S.head));
-    const materials=[...result.labor.filter(l=>linked.has(l.id)).map(l=>({m:linked.get(l.id),row:l})),...looseMaterials.map(m=>({m,row:null}))];
+    const materials=[...result.labor.filter(l=>linked.has(l.id)).flatMap(l=>linked.get(l.id).map(m=>({m,row:l}))),...looseMaterials.map(m=>({m,row:null}))];
+    const DESIGN_MAT_START=8; // 설계내역서 재료비 첫 행(7행 '1. 재료비' 다음)
+    const designRowOf=m=>DESIGN_MAT_START+materials.findIndex(x=>x.m===m);
     const priceRef=new Map();r=4;
-    for(const {m} of materials){
-      ms.set('A'+r,m.name).set('B'+r,m.spec).set('C'+r,m.unit,S.center).set('D'+r,num(Number(m.price)),S.money).set('E'+r,String(m.source||'').replace(/ · 재료 할증.*$/,''));
+    for(const {m,row} of materials){
+      // 부속품률 줄의 단가 = 같은 행 주자재 금액 × % (설계내역서의 주자재 금액 칸을 참조)
+      const main=m.role==='ratio'&&row?linked.get(row.id).find(x=>x.role==='main'):null;
+      ms.set('A'+r,m.name).set('B'+r,m.spec).set('C'+r,m.unit,S.center)
+        .set('D'+r,num(Number(m.price)),S.money,main?`${RD}(설계내역서!F${designRowOf(main)}*${num(m.ratioPercent)}%,0)`:undefined)
+        .set('E'+r,String(m.source||'').replace(/ · 재료 할증.*$/,''));
       priceRef.set(m,'D'+r);r++;
     }
     mergeRuns(ms,4,r-1);
@@ -177,10 +184,12 @@
     const matStart=r;
     for(const {m,row} of materials){
       const factor=row?Number(m.materialFactor||1):1,q=qtyRef.get(row?row.id:m),qty=Number(m.quantity);
+      const mult=row?num((m.perUnit??1)*factor):1;
+      const qtyFormula=m.role==='ratio'?undefined:`물량산출근거!${q}${mult!==1?'*'+mult:''}`;
       ds.set('A'+r,m.name).set('B'+r,m.spec)
-        .set('C'+r,num(qty),S.qty,`물량산출근거!${q}${factor!==1?'*'+num(factor):''}`).set('D'+r,m.unit,S.center)
+        .set('C'+r,num(qty),S.qty,qtyFormula).set('D'+r,m.unit,S.center)
         .set('E'+r,num(Number(m.price)),S.money,`자재단가산출기초!${priceRef.get(m)}`).set('F'+r,m.amount,S.money,`${RD}(C${r}*E${r},0)`)
-        .set('I'+r,m.amount,S.money,`F${r}`).set('J'+r,factor!==1?`재료 할증 ${num((factor-1)*100)}% (1-1-6)`:'');
+        .set('I'+r,m.amount,S.money,`F${r}`).set('J'+r,[m.role==='extra'?`${row.standard.name} 1${row.standard.unit}당 ${num(m.perUnit)}${m.unit}`:'',m.role==='ratio'?`주자재 금액 × ${num(m.ratioPercent)}% (3-1-2)`:'',factor!==1?`재료 할증 ${num((factor-1)*100)}% (1-1-6)`:''].filter(Boolean).join(' · '));
       blankRow(r);r++;
     }
     mergeRuns(ds,matStart,r-1);

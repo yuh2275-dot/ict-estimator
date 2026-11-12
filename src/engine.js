@@ -40,11 +40,36 @@
         const inputQuantity = number(row.length) * number(row.count);
         const adjustment = Surcharges.combined(standard,row);
         const quantity = inputQuantity * adjustment.parallel.quantityMultiplier;
+        let mainAmount = null;
         if (row.materialPrice != null) {
           const price = number(row.materialPrice);
           const materialQuantity=quantity*adjustment.materialFactor;
           const amount = round(materialQuantity * price, state.rounding);
-          materials.push({quantityId:row.id,name:row.materialName?.trim()||standard.name,spec:row.materialSpec?.trim()||standard.spec,unit:standard.unit,quantity:materialQuantity,installationQuantity:quantity,materialFactor:adjustment.materialFactor,price,amount,source:[row.materialSource,adjustment.materialPercent?`재료 할증 ${adjustment.materialPercent}% (1-1-6)`:''].filter(Boolean).join(' · ')});
+          materials.push({quantityId:row.id,role:'main',name:row.materialName?.trim()||standard.name,spec:row.materialSpec?.trim()||standard.spec,unit:standard.unit,quantity:materialQuantity,installationQuantity:quantity,perUnit:1,materialFactor:adjustment.materialFactor,price,amount,source:[row.materialSource,adjustment.materialPercent?`재료 할증 ${adjustment.materialPercent}% (1-1-6)`:''].filter(Boolean).join(' · ')});
+          material += amount; mainAmount = amount;
+        }
+        // 자재 구성: 작업 1단위당 들어가는 부자재(예: 패치코드 1개 = UTP 케이블 3m + RJ45 2개)와 부속품률(3-1-2, 주자재 금액 × %)
+        const extras = Array.isArray(row.extraMaterials) ? row.extraMaterials : [];
+        if (extras.length && adjustment.demolition) throw Error('철거 행에는 자재 구성을 넣지 마세요.');
+        for (const [k, x] of extras.entries()) {
+          const name = String(x.name||'').trim();
+          if (!name) throw Error('자재 구성에 품명이 없는 줄이 있습니다.');
+          if (x.ratioPercent != null) {
+            const pct = number(x.ratioPercent);
+            if (pct > 100) throw Error(`${name}: 부속품률은 100% 이하로 입력하세요.`);
+            if (mainAmount == null) errors.push(`${standard.name} · ${name}: 부속품률을 적용할 주자재 단가가 없습니다.`);
+            const amount = round((mainAmount || 0) * pct / 100, state.rounding);
+            materials.push({quantityId:row.id,role:'ratio',extra:k,name,spec:String(x.spec||''),unit:'식',quantity:1,installationQuantity:quantity,ratioPercent:pct,price:amount,amount,source:[x.source,`주자재 금액 × ${pct}% (3-1-2 부속품률)`].filter(Boolean).join(' · ')});
+            material += amount; continue;
+          }
+          const per = number(x.perUnit), loss = x.lossPercent==null||x.lossPercent===''?0:number(x.lossPercent);
+          if (loss > 100) throw Error(`${name}: 재료 할증은 100% 이하로 입력하세요.`);
+          const priced = x.price != null && x.price !== '';
+          const price = priced ? number(x.price) : 0;
+          if (!priced) errors.push(`${standard.name}${row.location ? ` (${row.location})` : ''} · 자재 "${name}${x.spec?` ${x.spec}`:''}" 단가 입력 필요`);
+          const qty = quantity * per * (1 + loss / 100);
+          const amount = round(qty * price, state.rounding);
+          materials.push({quantityId:row.id,role:'extra',extra:k,name,spec:String(x.spec||''),unit:String(x.unit||'개'),quantity:qty,installationQuantity:quantity,perUnit:per,materialFactor:1+loss/100,price,amount,source:[x.source,loss?`재료 할증 ${loss}% (1-1-6)`:''].filter(Boolean).join(' · ')});
           material += amount;
         }
         // 확인이 끝나지 않았어도 노무비는 계산해 보여 준다. 확인 필요 사항은 errors에 남겨 엑셀 저장만 막는다.

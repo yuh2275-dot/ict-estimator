@@ -104,7 +104,7 @@ function parseItem(text){
     for(const part of parts.slice(0,-1)){
       const bare=part.match(new RegExp(String.raw`^(.{1,30}?)\s*(?:은|는)?\s*`+pct+String.raw`$`));
       if(!bare||/\d\s*$/.test(bare[1])&&!/[A-Za-z가-힣]/.test(bare[1]))continue;
-      const label=bare[1].replace(/\s*(은|는)$/,'').trim(),value=+bare[2];
+      const label=bare[1].replace(/\s*(본\s*품셈|본\s*품|이\s*품)\s*의?\s*$/,'').replace(/\s*(은|는)$/,'').trim(),value=+bare[2]; // "벽면은 본 품셈의 110%" → 벽면
       if(!label||/(당|마다|이하|이상|미만|초과|[~～∼-])$/.test(label)||/품셈|품의/.test(label))continue;
       const factor=value/100;
       if(factor>0&&factor<=20)choices.push({name:`${label} ${value}% 적용`,factor});

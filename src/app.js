@@ -76,7 +76,8 @@ function validate(next){
  for(const l of s.labor){text(l.trade);Estimator.number(l.base);}
  for(const a of s.adjustments){text(a.id);text(a.name);text(a.basis);Estimator.number(a.factor);}
  }
- for(const q of next.quantities){Estimator.number(q.length);Estimator.number(q.count);if(q.materialPrice!=null)Estimator.number(q.materialPrice);if(q.materialName!=null)text(q.materialName);if(q.materialSpec!=null)text(q.materialSpec);if(q.surcharges!=null&&(!Array.isArray(q.surcharges)||q.surcharges.length>100))throw Error('공통 할증 목록 형식 오류');}
+ for(const q of next.quantities){Estimator.number(q.length);Estimator.number(q.count);if(q.materialPrice!=null)Estimator.number(q.materialPrice);if(q.materialName!=null)text(q.materialName);if(q.materialSpec!=null)text(q.materialSpec);
+  if(q.extraMaterials!=null){if(!Array.isArray(q.extraMaterials)||q.extraMaterials.length>100)throw Error('자재 구성 형식 오류');for(const e of q.extraMaterials){text(e.name);if(e.spec!=null)text(e.spec);if(e.unit!=null)text(e.unit);if(e.source!=null)text(e.source);if(e.perUnit!=null)Estimator.number(e.perUnit);if(e.ratioPercent!=null)Estimator.number(e.ratioPercent);if(e.lossPercent!=null)Estimator.number(e.lossPercent);if(e.price!=null)Estimator.number(e.price);}}if(q.surcharges!=null&&(!Array.isArray(q.surcharges)||q.surcharges.length>100))throw Error('공통 할증 목록 형식 오류');}
  for(const expense of next.expenses){
   if(!['machine','other'].includes(expense.kind))throw Error('경비 종류 오류');
   text(expense.name);text(expense.source);
@@ -96,7 +97,10 @@ function validate(next){
 document.addEventListener('change',async event=>{try{
  const t=event.target;
  if(t.dataset.key){const old=structuredClone(state);setValue(t.dataset.key,t.type==='checkbox'?t.checked:t.type==='number'?Number(t.value):t.value);try{validate(state);}catch(e){state=old;throw e;}state.history.push({at:new Date().toISOString(),field:t.dataset.key,value:t.type==='checkbox'?t.checked:t.value});if(active!==estimatePage||!t.dataset.key.startsWith('project.'))render();}
- if(t.id==='open'){const data=JSON.parse(await t.files[0].text());state=validate(data);template=null;EstimateUI.reset();BasisUI.reset();render();message('작업을 불러왔습니다. Excel 양식은 다시 연결하세요.');}
+ if(t.id==='open'){const data=JSON.parse(await t.files[0].text());
+  // 예전 작업 파일에는 나중에 원문 대조로 추가된 기본 품셈이 없으므로 id 기준으로 빠진 것만 덧붙인다.
+  const added=Array.isArray(data.standards)?initialStandards.filter(s=>!data.standards.some(x=>x.id===s.id)).map(s=>structuredClone(s)):[];if(added.length)data.standards.push(...added);
+  state=validate(data);template=null;EstimateUI.reset();BasisUI.reset();render();message('작업을 불러왔습니다. Excel 양식은 다시 연결하세요.');}
  if(t.id==='template-file'){template=await ExcelIO.open(t.files[0]);render();message(['양식 파일을 브라우저 메모리에서 읽었습니다.',...template.warnings].join(' '));}
  if(t.id==='data-file'){
  const book=await ExcelIO.open(t.files[0]),type=$('#import-type').value;
@@ -152,7 +156,7 @@ document.addEventListener('click',async e=>{try{const t=e.target.closest('button
   download(workbook,`${state.project.name||'공사비 산정'}_설계내역서.xlsx`);message('설계내역서 Excel을 저장했습니다. 표지·원가계산서·집계표·설계내역서·일위대가표·물량산출근거·인건비산출기초·자재단가산출기초 시트가 수식으로 연결되어 있습니다.');
  }
  if(t.id==='security'){
- const entries=performance.getEntriesByType('resource');const allowed=['src/style.css?v=takeoff-1','vendor/jszip.min.js','src/engine.js?v=port-cut-1','src/standards.js?v=cost-preview-1','src/commentary-data.js?v=cost-preview-1','src/surcharges.js?v=port-cut-1','src/rate-sheet.js?v=cost-preview-1','src/catalog-data.js','src/catalog-ui.js?v=cost-preview-1','src/xlsx.js?v=cost-preview-1','src/design-xlsx.js?v=port-cut-1','src/takeoff.js?v=takeoff-1','src/estimate-ui.js?v=port-cut-1','src/app.js?v=takeoff-1','src/basis-ui.js?v=wage-period-1'];
+ const entries=performance.getEntriesByType('resource');const allowed=['src/style.css?v=materials-1','vendor/jszip.min.js','src/engine.js?v=materials-1','src/standards-verified.js?v=verified-1','src/standards.js?v=cost-preview-1','src/commentary-data.js?v=cost-preview-1','src/surcharges.js?v=port-cut-1','src/rate-sheet.js?v=cost-preview-1','src/catalog-data.js','src/catalog-ui.js?v=cost-preview-1','src/xlsx.js?v=cost-preview-1','src/design-xlsx.js?v=materials-1','src/material-recipes.js?v=materials-1','src/takeoff.js?v=materials-1','src/estimate-ui.js?v=materials-1','src/app.js?v=materials-1','src/basis-ui.js?v=wage-period-1'];
  const unexpected=entries.filter(r=>!allowed.some(a=>r.name===new URL(a,location.href).href) && !/^page-[0-9]{3}\.webp$/.test(r.name.startsWith(new URL('src/reference/',location.href).href)?r.name.slice(new URL('src/reference/',location.href).href.length):''));
  $('#security-result').textContent=`정적 리소스 ${entries.length}건 / 허용 목록 외 ${unexpected.length}건\nCSP connect-src 'none' 적용\n추가 검증은 README의 브라우저 네트워크 절차를 따르세요.`;
  }
