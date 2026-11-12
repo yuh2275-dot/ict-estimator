@@ -44,7 +44,7 @@
           const price = number(row.materialPrice);
           const materialQuantity=quantity*adjustment.materialFactor;
           const amount = round(materialQuantity * price, state.rounding);
-          materials.push({quantityId:row.id,name:standard.name,spec:standard.spec,unit:standard.unit,quantity:materialQuantity,installationQuantity:quantity,materialFactor:adjustment.materialFactor,price,amount,source:[row.materialSource,adjustment.materialPercent?`재료 할증 ${adjustment.materialPercent}% (1-1-6)`:''].filter(Boolean).join(' · ')});
+          materials.push({quantityId:row.id,name:row.materialName?.trim()||standard.name,spec:row.materialSpec?.trim()||standard.spec,unit:standard.unit,quantity:materialQuantity,installationQuantity:quantity,materialFactor:adjustment.materialFactor,price,amount,source:[row.materialSource,adjustment.materialPercent?`재료 할증 ${adjustment.materialPercent}% (1-1-6)`:''].filter(Boolean).join(' · ')});
           material += amount;
         }
         // 확인이 끝나지 않았어도 노무비는 계산해 보여 준다. 확인 필요 사항은 errors에 남겨 엑셀 저장만 막는다.
