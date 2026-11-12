@@ -19,7 +19,7 @@
     if (matches.length > 1) { note(`기준일 ${date}에 해당하는 노임단가가 ${matches.length}건입니다. 하나만 남기세요. 가장 최근 시작 노임으로 계산했습니다.`); return [...matches].sort((a,b)=>b.from.localeCompare(a.from))[0]; }
     if (all.length) {
       const nearest = [...all].sort((a,b)=>Math.abs(Date.parse(a.to<date?a.to:a.from)-Date.parse(date))-Math.abs(Date.parse(b.to<date?b.to:b.from)-Date.parse(date)))[0];
-      note(`노임 적용기간(${nearest.from} ~ ${nearest.to})이 공사 기준일 ${date}을 포함하지 않습니다. 이 노임(${Number(nearest.price).toLocaleString('ko-KR')}원)으로 임시 계산했습니다. 적용기간을 확인하세요.`);
+      note(`노임 적용기간(${nearest.from} ~ ${nearest.to})이 공사 기준일 ${date}을 포함하지 않습니다. 이 노임(${Number(nearest.price).toLocaleString('ko-KR')}원)으로 임시 계산했습니다. 노임·제비율 설정의 "적용기간 일괄 수정"에서 고칠 수 있습니다.`);
       return nearest;
     }
     note('노임단가가 없습니다. 노임·제비율 설정에서 입력하면 자동으로 계산됩니다.');
