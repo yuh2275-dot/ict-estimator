@@ -52,7 +52,7 @@ function render(){
  if(active===9)html=`<div class="card"><h2>원본 양식으로 Excel 생성</h2><p>재료비 9행 · 직종 7행 · 공종 19행까지 지원</p><p>기존 수식 변경 이력을 함께 저장할 수 있습니다. Excel에서 열면 전체 수식을 재계산합니다.</p><button id="export" class="primary">XLSX 다운로드</button> <button id="audit">최근 수식 변경 이력 저장</button><p class="muted">제공 빈 양식의 #REF! 2곳을 수정하고, 검토한 제비율로 기존 고정 요율을 교체합니다. 원본의 천원 단위 최종 절사는 원 단위 합계로 변경합니다.</p></div>`;
  if(active===10)html=`<div class="card"><label>원 단위 처리 <select data-key="rounding"><option value="floor" ${state.rounding==='floor'?'selected':''}>절사</option><option value="round" ${state.rounding==='round'?'selected':''}>반올림</option></select></label><p>노임단가와 제비율은 아래 입력란에서 관리할 수 있습니다.</p></div>${BasisUI.render(state)}<div class="card"><details id="basis-json"><summary>기준 데이터 JSON 편집</summary><p>JSON을 적용하면 선택한 기준의 목록 전체를 교체합니다.</p><select id="config-type"><option value="wages">노임단가</option><option value="rates">제비율</option><option value="standards">품셈</option></select><button id="load-config">편집할 목록 표시</button><button id="config-example">예제 넣기</button><textarea id="config" aria-label="기준 데이터 JSON"></textarea><button id="apply-config" class="primary">입력 검증 후 적용</button><p id="config-status" role="status"></p><details><summary>등록 형식</summary><p>예제 넣기를 누르면 선택한 기준의 목록 형식이 입력됩니다. 제비율의 rate는 퍼센트 숫자입니다. reviewed는 근거를 검토한 경우 true, enabled는 적용할 때 true입니다.</p><p>산정금액 ID는 material, directLabor, expense 및 앞서 등록한 제비율 id를 사용합니다. 출력 셀은 원가계산서 D9, D11~D19, D22, D23, D25입니다.</p></details></details><button id="security">현재 정적 리소스 요청 검사</button><pre id="security-result"></pre></div>`;
  if(active===2)html=CatalogUI.render(state);
- if(active===estimatePage)html=EstimateUI.render(state,result);
+ if(active===estimatePage)html=Takeoff.render(state)+EstimateUI.render(state,result);
  if(active===7)html=costSheet(result);
  if([5,6,7].includes(active))html+=calculationIssues(result.errors);
  $('#view').innerHTML=html||'<div class="card">공종 검색에서 항목을 추가하세요.</div>';
@@ -152,7 +152,7 @@ document.addEventListener('click',async e=>{try{const t=e.target.closest('button
   download(workbook,`${state.project.name||'공사비 산정'}_설계내역서.xlsx`);message('설계내역서 Excel을 저장했습니다. 표지·원가계산서·집계표·설계내역서·일위대가표·물량산출근거·인건비산출기초·자재단가산출기초 시트가 수식으로 연결되어 있습니다.');
  }
  if(t.id==='security'){
- const entries=performance.getEntriesByType('resource');const allowed=['src/style.css?v=wage-period-1','vendor/jszip.min.js','src/engine.js?v=port-cut-1','src/standards.js?v=cost-preview-1','src/commentary-data.js?v=cost-preview-1','src/surcharges.js?v=port-cut-1','src/rate-sheet.js?v=cost-preview-1','src/catalog-data.js','src/catalog-ui.js?v=cost-preview-1','src/xlsx.js?v=cost-preview-1','src/design-xlsx.js?v=port-cut-1','src/estimate-ui.js?v=port-cut-1','src/app.js?v=port-cut-1','src/basis-ui.js?v=wage-period-1'];
+ const entries=performance.getEntriesByType('resource');const allowed=['src/style.css?v=takeoff-1','vendor/jszip.min.js','src/engine.js?v=port-cut-1','src/standards.js?v=cost-preview-1','src/commentary-data.js?v=cost-preview-1','src/surcharges.js?v=port-cut-1','src/rate-sheet.js?v=cost-preview-1','src/catalog-data.js','src/catalog-ui.js?v=cost-preview-1','src/xlsx.js?v=cost-preview-1','src/design-xlsx.js?v=port-cut-1','src/takeoff.js?v=takeoff-1','src/estimate-ui.js?v=port-cut-1','src/app.js?v=takeoff-1','src/basis-ui.js?v=wage-period-1'];
  const unexpected=entries.filter(r=>!allowed.some(a=>r.name===new URL(a,location.href).href) && !/^page-[0-9]{3}\.webp$/.test(r.name.startsWith(new URL('src/reference/',location.href).href)?r.name.slice(new URL('src/reference/',location.href).href.length):''));
  $('#security-result').textContent=`정적 리소스 ${entries.length}건 / 허용 목록 외 ${unexpected.length}건\nCSP connect-src 'none' 적용\n추가 검증은 README의 브라우저 네트워크 절차를 따르세요.`;
  }
@@ -175,6 +175,10 @@ EstimateUI.connect({getState:()=>state,refresh:render,message,
  update(collection,apply){const next=structuredClone(state);apply(next[collection]);state=validate(next);},
  openDraft(id){active=2;returnToEstimate=true;CatalogUI.openDraft(id);},
  calculate(){active=7;message('');render();}
+});
+Takeoff.connect({getState:()=>state,refresh:render,message,download,
+ openDraft(id){active=2;returnToEstimate=true;CatalogUI.openDraft(id);render();},
+ replace(next){state=validate(next);}
 });
 BasisUI.connect({getState:()=>state,refresh:render,update(type,apply){
  const next=structuredClone(state);
