@@ -1,0 +1,20 @@
+name: Handoff doc check
+# 코드를 바꾼 PR은 docs/HANDOFF.md도 함께 갱신해야 한다(Codex·Claude 공통).
+# 문서 갱신이 필요 없는 PR은 'skip-handoff' 라벨을 붙이면 통과한다.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+permissions:
+  contents: read
+jobs:
+  check:
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-handoff') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node tools/handoff-status.cjs "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}"

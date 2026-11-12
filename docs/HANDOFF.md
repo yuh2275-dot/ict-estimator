@@ -13,6 +13,8 @@ Codex에서 시작한 작업(UTP 동시포설, 커밋 `4fa5825`)을 Claude Code�
 | [#3](https://github.com/yuh2275-dot/ict-estimator/pull/3) | 엑셀 저장을 설계내역서 통합문서(8개 시트, 수식 연결)로 교체. 공사정보에 "공사개요" 필드 추가 | `src/design-xlsx.js`(신규), `src/app.js` |
 | [#4](https://github.com/yuh2275-dot/ict-estimator/pull/4) | 원가계산서를 사용자 예시 양식에 맞춤: (A)~(H) 기호, 구성비, 간접재료비 행, 천원 미만 절사 | `src/design-xlsx.js` |
 | [#5](https://github.com/yuh2275-dot/ict-estimator/pull/5) | 공사원가계산 화면에 시트 미리보기 탭. 노임을 등록하면 확인 체크 전에도 노무비 자동 계산 | `src/engine.js`(`wageFor`), `src/app.js`(`costSheet`), `src/design-xlsx.js`(`toHtml`) |
+| #6, #7 | 인계 문서 `AGENTS.md`, `docs/HANDOFF.md`, `CLAUDE.md`(AGENTS.md 자동 로드) | 문서 |
+| (이번 PR) | **인계 문서 자동 갱신 장치** — 아래 2.4 | `tools/handoff-status.cjs`, `tools/update-handoff-log.cjs`, `.github/workflows/handoff-*.yml`, `.claude/` |
 
 ## 2. 동작 요약
 
@@ -48,6 +50,20 @@ Codex에서 시작한 작업(UTP 동시포설, 커밋 `4fa5825`)을 Claude Code�
   - 그 밖의 항목 → 경비(C)
 - 총금액은 `ROUNDDOWN(총원가 + 부가가치세, -3)`입니다. 앱 화면 총액은 절사 전 금액입니다.
 - 공사원가계산 화면은 같은 `build()` 결과를 `toHtml()`로 그립니다. 확인 항목이 있어도 `{preview:true}`로 미리보기는 됩니다.
+
+### 2.4 인계 문서 자동 갱신 (사용량이 끊겨도 기록이 남도록)
+- **자동 기록**: `main`에 머지될 때마다 `.github/workflows/handoff-log.yml`이 `tools/update-handoff-log.cjs`를 실행합니다.
+  - 이 문서 맨 아래 AUTO-LOG 구간을 최근 머지 PR, 바뀐 파일, 테스트 결과로 다시 쓰고, `github-actions[bot]`이 `[skip ci]` 커밋으로 올립니다.
+  - AI 토큰을 쓰지 않습니다. 이 구간은 직접 고치지 마세요.
+- **PR 검사**: `.github/workflows/handoff-check.yml`이 있습니다.
+  - 코드(`src/`, `tests/`, `tools/`, 워크플로, `index.html` 등)를 바꾼 PR에서 이 문서가 함께 바뀌지 않으면 실패합니다.
+  - 문서 갱신이 필요 없는 PR은 `skip-handoff` 라벨을 붙이면 통과합니다.
+  - 로컬 확인: `node tools/handoff-status.cjs origin/main HEAD`
+- **Claude Code 훅**: `.claude/settings.json`에 설정했습니다.
+  - Stop: 응답을 끝내기 전에 "코드는 바뀌었는데 이 문서는 그대로"이면 한 번 막고 갱신을 지시합니다.
+  - SessionStart(compact·resume): 대화 요약·재개 직후 같은 내용을 상기시킵니다.
+  - Codex에는 이런 훅이 없어서 AGENTS.md 규칙과 PR 검사로 대신합니다.
+- **한계**: 한 응답 도중 사용 한도에 걸리면 그 응답의 작업은 기록되지 않습니다. 직전 PR까지의 판단 내용과 머지된 내용은 남습니다.
 
 ## 3. 사용자 확인이 필요한 해석 (아직 답을 받지 못함)
 
