@@ -5,7 +5,7 @@ require('../src/standards.js');
 const V=require('../src/standards-verified.js');
 const E=require('../src/engine.js');
 const C=globalThis.standardCatalog;
-const TRADES=new Set(['통신내선공','통신설비공','통신외선공','통신케이블공','무선안테나공','광케이블설치사','H/W 시험사','S/W 시험사','통신관련기사','통신관련 산업기사','통신관련기능사','보통인부','특별인부','착암공','방수공','건축목공','배전전공','저압케이블전공','고압케이블전공','변전전공','송전전공','통신기능공']);
+const TRADES=new Set(['통신내선공','통신설비공','통신외선공','통신케이블공','무선안테나공','광케이블설치사','H/W 시험사','S/W 시험사','통신관련기사','통신관련 산업기사','통신관련기능사','보통인부','특별인부','착암공','방수공','건축목공','배전전공','저압케이블전공','고압케이블전공','변전전공','송전전공','통신기능공','전기공사기사']);
 const by=(code,spec)=>V.find(s=>s.code===code&&s.spec===spec);
 
 test('verified standards are well formed and point at real sections and pages',()=>{
