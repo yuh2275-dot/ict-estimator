@@ -100,3 +100,23 @@ Codex에서 시작한 작업(UTP 동시포설, 커밋 `4fa5825`)을 Claude Code�
   - 엑셀 테스트 데이터: `tests/fixtures-design-state.cjs`(합성 공사)
 - 엑셀 재계산 비교: `AGENTS.md`의 절차를 따릅니다. 지난 확인에서 숫자 셀 154개가 모두 앱 값과 일치했습니다. 수량·자재 수량·노임을 바꾼 뒤의 재계산도 일치했습니다.
 - 화면: Playwright로 `dist`를 띄워 공사비 산정 → 산정하기 → 미리보기 탭 → 엑셀 저장을 확인합니다. 내려받은 파일이 Node에서 만든 파일과 같은지도 비교했습니다.
+
+<!-- AUTO-LOG:START -->
+## 자동 기록 (머지할 때마다 GitHub Actions가 갱신, 직접 수정 금지)
+
+- 기준 커밋: `804bbf7` (2026-11-12)
+- 테스트: 통과 ?개 / 실패 ?개
+
+| 날짜 | PR | 제목 | 머지 커밋 |
+|---|---|---|---|
+| 2026-11-12 | [#8](https://github.com/yuh2275-dot/ict-estimator/pull/8) | 인계 문서(docs/HANDOFF.md) 자동 갱신 장치 | `804bbf7` |
+| 2026-11-12 | [#7](https://github.com/yuh2275-dot/ict-estimator/pull/7) | CLAUDE.md 추가 (AGENTS.md 자동 로드) | `707313a` |
+| 2026-11-12 | [#6](https://github.com/yuh2275-dot/ict-estimator/pull/6) | Codex 인계 문서 추가 (AGENTS.md, docs/HANDOFF.md) | `07761c3` |
+| 2026-11-11 | [#5](https://github.com/yuh2275-dot/ict-estimator/pull/5) | 공사원가계산 화면에서 원가계산서 미리보기 + 노임 등록 시 노무비 자동 계산 | `ef489b5` |
+| 2026-11-11 | [#4](https://github.com/yuh2275-dot/ict-estimator/pull/4) | 원가계산서를 예시 양식에 맞게 정리 | `de4a885` |
+| 2026-11-11 | [#3](https://github.com/yuh2275-dot/ict-estimator/pull/3) | 엑셀 저장을 설계내역서 통합문서(8개 시트, 수식 연결)로 변경 | `f0c46c3` |
+| 2026-11-11 | [#2](https://github.com/yuh2275-dot/ict-estimator/pull/2) | 추가 배율(해설 계수 직접입력) 중복·오입력 경고 | `53f5709` |
+| 2026-11-11 | [#1](https://github.com/yuh2275-dot/ict-estimator/pull/1) | 전체 품셈 공종 해설 할증 조건 반영 (4-3 수작업 대조 + 전체 자동 추출) | `c60328e` |
+
+위 기간에 바뀐 파일 (27개): `.claude/hooks/handoff-guard.cjs`, `.claude/settings.json`, `.github/workflows/handoff-check.yml`, `.github/workflows/handoff-log.yml`, `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/HANDOFF.md`, `index.html`, `src/app.js`, `src/commentary-data.js`, `src/design-xlsx.js`, `src/engine.js`, `src/estimate-ui.js`, `src/style.css`, `src/surcharges.js`, `src/xlsx.js`, `tests/catalog.test.cjs`, `tests/commentary.test.cjs`, `tests/design-xlsx.test.cjs`, `tests/excel.test.cjs`, `tests/fixtures-design-state.cjs`, `tests/surcharges.test.cjs`, `tests/wages.test.cjs`, `tools/extract_commentary.cjs`, `tools/handoff-status.cjs`, `tools/update-handoff-log.cjs`
+<!-- AUTO-LOG:END -->
