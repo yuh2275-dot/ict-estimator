@@ -1,0 +1,41 @@
+name: Update handoff log
+# main에 머지될 때마다 docs/HANDOFF.md의 자동 기록 구간을 갱신한다(AI 토큰 불필요).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: handoff-log
+  cancel-in-progress: false
+jobs:
+  log:
+    # 이 워크플로가 만든 커밋에는 다시 반응하지 않는다.
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run tests for the summary
+        id: tests
+        run: |
+          node restore-reference.cjs
+          out=$(node --test tests/*.test.cjs 2>&1 || true)
+          pass=$(echo "$out" | grep -E '^# pass' | awk '{print $3}')
+          fail=$(echo "$out" | grep -E '^# fail' | awk '{print $3}')
+          echo "summary=통과 ${pass:-?}개 / 실패 ${fail:-?}개" >> "$GITHUB_OUTPUT"
+      - name: Update docs/HANDOFF.md
+        run: node tools/update-handoff-log.cjs "${{ steps.tests.outputs.summary }}"
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- docs/HANDOFF.md; then echo "no change"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/HANDOFF.md
+          git commit -m "docs: update handoff auto log [skip ci]"
+          git push
