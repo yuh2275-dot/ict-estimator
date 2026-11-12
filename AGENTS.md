@@ -7,7 +7,7 @@
 
 ```bash
 node restore-reference.cjs        # 원문 이미지(src/reference) 복원. 테스트·빌드 전에 1회
-node --test tests/*.test.cjs      # 전체 테스트 (현재 67개 통과)
+node --test tests/*.test.cjs      # 전체 테스트 (현재 70개 통과)
 node build.cjs                    # dist/ 생성 (index.html, src, vendor만 복사)
 node tools/extract_commentary.cjs # 원문 [해 설] → src/commentary-data.js 재생성 (직접 수정 금지)
 node tools/handoff-status.cjs origin/main HEAD  # 코드 변경에 HANDOFF 갱신이 포함됐는지 확인
@@ -23,6 +23,7 @@ node tools/handoff-status.cjs origin/main HEAD  # 코드 변경에 HANDOFF 갱�
 | `src/surcharges.js` | 공통 할증(1-2-2), 동시포설(4-3-1 ⑧), 공종 해설 조건(`commentary`, `commentaryFactors`), 추가 배율 경고(`customWarnings`), `combined()`가 최종 계수 산출 |
 | `src/commentary-data.js` | 자동 생성. 555개 절의 해설 항목·선택지 |
 | `src/standards.js` | 기본 등록 6개 품셈 (4-3-1~4-3-3, 원문 대조 완료) |
+| `src/standards-verified.js` | 원문 이미지와 대조해 등록한 품셈(3장·4장). 행 순서가 id이므로 순서 변경 금지 |
 | `src/catalog-data.js` | 원문 587쪽 텍스트·표·계산 후보 4,032개 (5.6MB, 직접 수정 금지) |
 | `src/design-xlsx.js` | `DesignWorkbook` — 엑셀 저장(8개 시트, 수식 연결)과 화면 미리보기(`toHtml`) |
 | `src/xlsx.js` | `ExcelIO` — 엑셀 읽기, 기존 "빈 설계내역서 양식에 쓰기"(구 기능) |
