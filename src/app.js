@@ -152,7 +152,7 @@ document.addEventListener('click',async e=>{try{const t=e.target.closest('button
   download(workbook,`${state.project.name||'공사비 산정'}_설계내역서.xlsx`);message('설계내역서 Excel을 저장했습니다. 표지·원가계산서·집계표·설계내역서·일위대가표·물량산출근거·인건비산출기초·자재단가산출기초 시트가 수식으로 연결되어 있습니다.');
  }
  if(t.id==='security'){
- const entries=performance.getEntriesByType('resource');const allowed=['src/style.css?v=cost-preview-1','vendor/jszip.min.js','src/engine.js?v=material-fields-1','src/standards.js?v=cost-preview-1','src/commentary-data.js?v=cost-preview-1','src/surcharges.js?v=cost-preview-1','src/rate-sheet.js?v=cost-preview-1','src/catalog-data.js','src/catalog-ui.js?v=cost-preview-1','src/xlsx.js?v=cost-preview-1','src/design-xlsx.js?v=material-fields-1','src/estimate-ui.js?v=material-fields-1','src/app.js?v=material-fields-1','src/basis-ui.js?v=cost-preview-1'];
+ const entries=performance.getEntriesByType('resource');const allowed=['src/style.css?v=wage-period-1','vendor/jszip.min.js','src/engine.js?v=wage-period-1','src/standards.js?v=cost-preview-1','src/commentary-data.js?v=cost-preview-1','src/surcharges.js?v=cost-preview-1','src/rate-sheet.js?v=cost-preview-1','src/catalog-data.js','src/catalog-ui.js?v=cost-preview-1','src/xlsx.js?v=cost-preview-1','src/design-xlsx.js?v=material-fields-1','src/estimate-ui.js?v=material-fields-1','src/app.js?v=wage-period-1','src/basis-ui.js?v=wage-period-1'];
  const unexpected=entries.filter(r=>!allowed.some(a=>r.name===new URL(a,location.href).href) && !/^page-[0-9]{3}\.webp$/.test(r.name.startsWith(new URL('src/reference/',location.href).href)?r.name.slice(new URL('src/reference/',location.href).href.length):''));
  $('#security-result').textContent=`정적 리소스 ${entries.length}건 / 허용 목록 외 ${unexpected.length}건\nCSP connect-src 'none' 적용\n추가 검증은 README의 브라우저 네트워크 절차를 따르세요.`;
  }
@@ -176,7 +176,7 @@ EstimateUI.connect({getState:()=>state,refresh:render,message,
  openDraft(id){active=2;returnToEstimate=true;CatalogUI.openDraft(id);},
  calculate(){active=7;message('');render();}
 });
-BasisUI.connect({refresh:render,update(type,apply){
+BasisUI.connect({getState:()=>state,refresh:render,update(type,apply){
  const next=structuredClone(state);
  apply(next[type]);
  if(type==='rates')next.ratesReviewed=false;
