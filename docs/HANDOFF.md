@@ -139,11 +139,12 @@ UTP 동시포설(커밋 `4fa5825`) 이후 공종 해설·설계내역서·원가
 <!-- AUTO-LOG:START -->
 ## 자동 기록 (머지할 때마다 GitHub Actions가 갱신, 직접 수정 금지)
 
-- 기준 커밋: `18cc462` (2026-11-12)
-- 테스트: 통과 60개 / 실패 0개
+- 기준 커밋: `9505ac3` (2026-11-12)
+- 테스트: 통과 63개 / 실패 0개
 
 | 날짜 | PR | 제목 | 머지 커밋 |
 |---|---|---|---|
+| 2026-11-12 | [#11](https://github.com/yuh2275-dot/ict-estimator/pull/11) | 노임 적용기간 일괄 수정 기능 | `9505ac3` |
 | 2026-11-12 | [#9](https://github.com/yuh2275-dot/ict-estimator/pull/9) | 수량 행에 자재명·자재 규격 추가 | `18cc462` |
 | 2026-11-12 | [#10](https://github.com/yuh2275-dot/ict-estimator/pull/10) | 자동 기록의 테스트 결과가 "?"로 나오는 문제 수정 | `17e1e56` |
 | 2026-11-12 | [#8](https://github.com/yuh2275-dot/ict-estimator/pull/8) | 인계 문서(docs/HANDOFF.md) 자동 갱신 장치 | `804bbf7` |
@@ -155,5 +156,5 @@ UTP 동시포설(커밋 `4fa5825`) 이후 공종 해설·설계내역서·원가
 | 2026-11-11 | [#2](https://github.com/yuh2275-dot/ict-estimator/pull/2) | 추가 배율(해설 계수 직접입력) 중복·오입력 경고 | `53f5709` |
 | 2026-11-11 | [#1](https://github.com/yuh2275-dot/ict-estimator/pull/1) | 전체 품셈 공종 해설 할증 조건 반영 (4-3 수작업 대조 + 전체 자동 추출) | `c60328e` |
 
-위 기간에 바뀐 파일 (27개): `.claude/hooks/handoff-guard.cjs`, `.claude/settings.json`, `.github/workflows/handoff-check.yml`, `.github/workflows/handoff-log.yml`, `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/HANDOFF.md`, `index.html`, `src/app.js`, `src/commentary-data.js`, `src/design-xlsx.js`, `src/engine.js`, `src/estimate-ui.js`, `src/style.css`, `src/surcharges.js`, `src/xlsx.js`, `tests/catalog.test.cjs`, `tests/commentary.test.cjs`, `tests/design-xlsx.test.cjs`, `tests/excel.test.cjs`, `tests/fixtures-design-state.cjs`, `tests/surcharges.test.cjs`, `tests/wages.test.cjs`, `tools/extract_commentary.cjs`, `tools/handoff-status.cjs`, `tools/update-handoff-log.cjs`
+위 기간에 바뀐 파일 (29개): `.claude/hooks/handoff-guard.cjs`, `.claude/settings.json`, `.github/workflows/handoff-check.yml`, `.github/workflows/handoff-log.yml`, `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/HANDOFF.md`, `index.html`, `src/app.js`, `src/basis-ui.js`, `src/commentary-data.js`, `src/design-xlsx.js`, `src/engine.js`, `src/estimate-ui.js`, `src/style.css`, `src/surcharges.js`, `src/xlsx.js`, `tests/catalog.test.cjs`, `tests/commentary.test.cjs`, `tests/design-xlsx.test.cjs`, `tests/excel.test.cjs`, `tests/fixtures-design-state.cjs`, `tests/surcharges.test.cjs`, `tests/wage-period.test.cjs`, `tests/wages.test.cjs`, `tools/extract_commentary.cjs`, `tools/handoff-status.cjs`, `tools/update-handoff-log.cjs`
 <!-- AUTO-LOG:END -->
