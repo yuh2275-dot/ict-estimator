@@ -9,7 +9,7 @@ const state=(row={},wages)=>({project:{year:2026,date:'2026-09-01'},rounding:'fl
 
 test('labor is calculated from the registered wage before the review box is ticked',()=>{
   const r=E.calculate(state());
-  assert.equal(r.directLabor,284880);assert.equal(r.material,10000);assert.equal(r.total,294880);
+  assert.equal(r.directLabor,284880);assert.equal(r.material,10000);assert.equal(r.totalBeforeCut,294880);assert.equal(r.total,294000);
   assert.match(r.errors.join(),/TEST 공종 · 품셈·적용 조건 확인 필요/);
   const ok=E.calculate(state({reviewed:true}));assert.deepEqual(ok.errors,[]);assert.equal(ok.directLabor,284880);
 });

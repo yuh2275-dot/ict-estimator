@@ -298,7 +298,7 @@
     const totalCost=line(`총   원   가 (${gLetter})`,subValue.A+subValue.B+subValue.C+costOf(after),[`D${net}`,...afterRows.map(x=>'D'+x)].join('+'),`(${['D',...after.map(x=>letterOf[x.rule.id])].join(') + (')})`,true);
     for(const x of after)letterOf[x.rule.id]=letterOf[x.rule.id];
     const vatRows=of('vat').map(item=>{const letter=letters[li++];letterOf[item.rule.id]=letter;cs.set('A'+r,`${spaced(item.rule.name)} (${letter})`,S.center).merge(`A${r}:C${r}`,S.center);ruleRow(r,item);return r++;});
-    const beforeCut=result.total;
+    const beforeCut=result.totalBeforeCut??result.total;
     const contract=line('총   금   액',Math.floor(beforeCut/1000)*1000,`ROUNDDOWN(${[`D${totalCost}`,...vatRows.map(x=>'D'+x)].join('+')},-3)`,'',true);
     cs.set('F'+contract,`천원 미만 절사 (절사 전 ${beforeCut.toLocaleString('ko-KR')}원)`,S.totalLabel);
     pending.forEach(f=>f());
@@ -316,7 +316,7 @@
     const outline=['o 공사개요',...(overview.length?overview:[...new Set(result.labor.map(l=>l.standard.name))].slice(0,6)).map(s=>` - ${s}`)];
     cover.set('G7',outline.join('\n'),S.coverText).merge('G7:J8').height(7,60).height(8,60);
     if(project.location)cover.set('G9',`o 공사위치 : ${project.location}`,S.note).merge('G9:J9');
-    const amount=Math.floor(result.total/1000)*1000;
+    const amount=Math.floor((result.totalBeforeCut??result.total)/1000)*1000;
     cover.set('A10',`공 사 금 액 : ￦${amount.toLocaleString('ko-KR')}(금${koreanAmount(amount)}원)`,S.coverAmount,`IFERROR("공 사 금 액 : ￦"&TEXT(원가계산서!D${contract},"#,##0")&"(금"&NUMBERSTRING(원가계산서!D${contract},1)&"원)","공 사 금 액 : ￦"&TEXT(원가계산서!D${contract},"#,##0"))`).merge('A10:J10').height(10,40);
     if(project.agency)cover.set('A12',project.agency,S.coverAmount).merge('A12:J12').height(12,40);
 

@@ -26,7 +26,7 @@ function costSheet(result){
  try{const book=DesignWorkbook.build(state,result,{preview:true});names=book.sheets.map(s=>s.name);const sheet=book.sheets.find(s=>s.name===previewSheet)||book.sheets[1];previewSheet=sheet.name;preview=DesignWorkbook.toHtml(sheet);}
  catch(error){preview=`<p class="error">미리보기를 만들 수 없습니다: ${esc(error.message)}</p>`;}
  return `<div class="card estimate-panel"><div class="estimate-section-head"><h2>공사원가계산서</h2><div class="toolbar"><button data-nav="11">돌아가기</button><button class="primary" id="estimate-export" ${result.errors.length?'disabled title="계산 전 확인할 항목을 먼저 해결하세요."':''}>엑셀 저장</button></div></div>
- <p>${esc(state.project.name||'공사명 미입력')} · 기준일 ${esc(state.project.date)} · 총공사금액 <strong>${money(result.total)}원</strong>${result.errors.length?' <span class="tag">검토 중 금액</span>':''}</p>
+ <p>${esc(state.project.name||'공사명 미입력')} · 기준일 ${esc(state.project.date)} · 총공사금액 <strong>${money(result.total)}원</strong> <small>(천원 미만 절사 · 절사 전 ${money(result.totalBeforeCut??result.total)}원)</small>${result.errors.length?' <span class="tag">검토 중 금액</span>':''}</p>
  <div class="toolbar sheet-tabs">${names.map(n=>`<button data-preview-sheet="${esc(n)}" class="${n===previewSheet?'active':''}">${esc(n)}</button>`).join('')}</div>
  <div class="scroll sheet-preview">${preview}</div>
  <p class="muted">엑셀 저장 파일과 같은 내용입니다. 금액 칸에 마우스를 올리면 엑셀 수식이 보입니다.</p>
@@ -152,7 +152,7 @@ document.addEventListener('click',async e=>{try{const t=e.target.closest('button
   download(workbook,`${state.project.name||'공사비 산정'}_설계내역서.xlsx`);message('설계내역서 Excel을 저장했습니다. 표지·원가계산서·집계표·설계내역서·일위대가표·물량산출근거·인건비산출기초·자재단가산출기초 시트가 수식으로 연결되어 있습니다.');
  }
  if(t.id==='security'){
- const entries=performance.getEntriesByType('resource');const allowed=['src/style.css?v=wage-period-1','vendor/jszip.min.js','src/engine.js?v=wage-period-1','src/standards.js?v=cost-preview-1','src/commentary-data.js?v=cost-preview-1','src/surcharges.js?v=cost-preview-1','src/rate-sheet.js?v=cost-preview-1','src/catalog-data.js','src/catalog-ui.js?v=cost-preview-1','src/xlsx.js?v=cost-preview-1','src/design-xlsx.js?v=material-fields-1','src/estimate-ui.js?v=material-fields-1','src/app.js?v=wage-period-1','src/basis-ui.js?v=wage-period-1'];
+ const entries=performance.getEntriesByType('resource');const allowed=['src/style.css?v=wage-period-1','vendor/jszip.min.js','src/engine.js?v=port-cut-1','src/standards.js?v=cost-preview-1','src/commentary-data.js?v=cost-preview-1','src/surcharges.js?v=port-cut-1','src/rate-sheet.js?v=cost-preview-1','src/catalog-data.js','src/catalog-ui.js?v=cost-preview-1','src/xlsx.js?v=cost-preview-1','src/design-xlsx.js?v=port-cut-1','src/estimate-ui.js?v=port-cut-1','src/app.js?v=port-cut-1','src/basis-ui.js?v=wage-period-1'];
  const unexpected=entries.filter(r=>!allowed.some(a=>r.name===new URL(a,location.href).href) && !/^page-[0-9]{3}\.webp$/.test(r.name.startsWith(new URL('src/reference/',location.href).href)?r.name.slice(new URL('src/reference/',location.href).href.length):''));
  $('#security-result').textContent=`정적 리소스 ${entries.length}건 / 허용 목록 외 ${unexpected.length}건\nCSP connect-src 'none' 적용\n추가 검증은 README의 브라우저 네트워크 절차를 따르세요.`;
  }

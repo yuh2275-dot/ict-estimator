@@ -35,7 +35,8 @@ test('catalog rows registered from 4-3-x get row-specific commentary',()=>{
 });
 test('count rules follow the printed percentage sequences',()=>{
   const outlet=builtin('outlet'),rack=builtin('rack');
-  for(const [n,f] of [[1,1],[2,1.2],[3,1.4],[4,1.6],[6,1.8],[8,2]])close(S.commentaryFactors(outlet,{commentary:{ports:n}}).factor,f);
+  // 포트 수 산정: 구수 할증 × 포트 수 (6구 = 180% × 6포트 = ×10.8)
+  for(const [n,f] of [[1,1],[2,2.4],[3,4.2],[4,6.4],[6,10.8],[8,16]])close(S.commentaryFactors(outlet,{commentary:{ports:n}}).factor,f);
   for(const n of [5,7,0,1.5])assert.throws(()=>S.commentaryFactors(outlet,{commentary:{ports:n}}));
   // 4 racks installed together = 340% of one rack, i.e. 0.85 per rack when the quantity is the total count.
   for(const [n,f] of [[2,.9],[3,2.6/3],[4,.85],[5,4.2/5]])close(S.commentaryFactors(rack,{commentary:{rows:n}}).factor,f);
@@ -112,7 +113,7 @@ test('custom multiplier warns when it repeats a selected commentary condition or
   // 화면 사례: 6구 Outlet에 구수 6 선택 + 추가 배율 6 → ×10.8로 중복
   const row={adjustment:'custom',standardFactor:6,standardFactorBasis:'4구이상',commentary:{ports:6}};
   const w=S.customWarnings(outlet,row);assert.equal(w.length,2);assert.match(w[0],/한 번 더 곱해집니다/);assert.match(w[1],/600%/);
-  close(S.combined(outlet,row).laborFactor,10.8);
+  close(S.combined(outlet,row).laborFactor,6*10.8);
   assert.deepEqual(S.customWarnings(outlet,{...row,commentary:{}, standardFactor:1.3}),[]);
   assert.equal(S.customWarnings(outlet,{...row,standardFactor:1.3}).length,1);
   assert.match(S.customWarnings(outlet,{...row,commentary:{},standardFactor:1})[0],/할증이 없는 것/);

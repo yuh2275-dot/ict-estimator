@@ -85,7 +85,7 @@ test('custom chapter factor needs source and combines with common labor',()=>{
 test('fixed rates, additive basic amount, dependent totals and blank exclusions',()=>{
   const s=fixture(),p={from:'2026-01-01',to:'2026-12-31',source:'TEST',enabled:true,reviewed:true};
   s.rates=[{...p,id:'safety',name:'TEST',method:'percent',rate:2,bases:['directLabor','material'],addition:1000},{...p,id:'fee',name:'TEST',method:'fixed',fixedAmount:500,bases:[],rate:null},{...p,id:'exclude',name:'TEST',enabled:false,bases:[],rate:null},{...p,id:'general',name:'TEST',rate:10,bases:['directLabor','material','safety','fee','exclude']}];
-  const r=E.calculate(s);assert.deepEqual(r.errors,[]);assert.deepEqual(r.costs.map(c=>c.amount),[3020,500,0,10452]);assert.equal(r.total,114972);
+  const r=E.calculate(s);assert.deepEqual(r.errors,[]);assert.deepEqual(r.costs.map(c=>c.amount),[3020,500,0,10452]);assert.equal(r.totalBeforeCut,114972);assert.equal(r.total,114000);
   s.rates[0].rate=null;assert.match(E.calculate(s).errors.join(),/요율/);
   s.rates[0].rate=0;s.rates[1].fixedAmount=null;assert.match(E.calculate(s).errors.join(),/직접 산정금액/);
 });
@@ -98,7 +98,7 @@ test('Excel folds the wage premium into man-days so trade totals match the calcu
   assert.ok(per,'품셈 = 기본품 × 품 계수 1.35 × 노임 계수 1.5');
   const design=sheets.find(x=>x.name==='설계내역서');
   const labor=[...design.cells.entries()].find(([,c])=>c.formula&&/^ROUNDDOWN\(C\d+\*G\d+,0\)$/.test(c.formula));
-  assert.equal(labor[1].value,r.directLabor);assert.equal(r.directLabor,202500);assert.equal(r.total,203500);
+  assert.equal(labor[1].value,r.directLabor);assert.equal(r.directLabor,202500);assert.equal(r.totalBeforeCut,203500);assert.equal(r.total,203000);
   assert.equal(cell('원가계산서','D5').value,r.material);
   assert.rejects(ExcelIO.write({},s,r),/행별 노임 할증/);
 });

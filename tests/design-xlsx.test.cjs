@@ -27,7 +27,7 @@ test('cost statement follows the sample layout and its cached values equal the a
   assert.ok(!rows.some(([ref,x])=>/^A\d+$/.test(ref)&&String(x.value).replace(/\s/g,'')==='합계'));   // 별도 합계 행 없음
   assert.equal(c('D'+summary.contract).value,Math.floor(r.total/1000)*1000);
   assert.match(c('D'+summary.contract).formula,/^ROUNDDOWN\(D\d+\+D\d+,-3\)$/);
-  assert.match(c('F'+summary.contract).value,/7,832,704원/);
+  assert.equal(c('F'+summary.contract).value,`천원 미만 절사 (절사 전 ${r.totalBeforeCut.toLocaleString('ko-KR')}원)`);assert.equal(c('D'+summary.contract).value,r.total);
   for(const x of r.costs.filter(x=>x.enabled))assert.ok(rows.some(([ref,y])=>/^D/.test(ref)&&y.value===x.amount),x.id);
   assert.equal(cell('설계내역서','F'+summary.grand).value,r.material);assert.equal(cell('설계내역서','H'+summary.grand).value,r.directLabor);
 });
@@ -39,12 +39,12 @@ test('sheets are linked by formulas: quantity → 일위대가 → 설계내역�
   const laborRow=[...Array(40).keys()].map(i=>i+1).find(i=>cell('설계내역서','B'+i)?.value==='통신케이블공');
   assert.match(cell('설계내역서','C'+laborRow).formula,new RegExp(`^일위대가표!L${summary.totalRow}$`));
   assert.match(cell('설계내역서','G'+laborRow).formula,/^VLOOKUP\(B\d+,인건비산출기초!\$B\$6:\$C\$10,2,0\)$/);
-  assert.match(cell('표지','A10').formula,/NUMBERSTRING\(원가계산서!D\d+,1\)/);assert.match(cell('표지','A10').value,/칠백팔십삼만이천원/);
+  assert.match(cell('표지','A10').formula,/NUMBERSTRING\(원가계산서!D\d+,1\)/);assert.match(cell('표지','A10').value,/팔백일십삼만삼천원/);
 });
 test('commentary factors, demolition and the night wage premium appear in 일위대가표',()=>{
   const {cell,sheet}=view(fresh());
   const u=sheet('일위대가표'),row=name=>[...u.cells.entries()].filter(([ref,c])=>/^B\d+$/.test(ref)&&c.value===name).map(([ref])=>ref.slice(1));
-  const outlet=row('Modular Outlet')[0];assert.equal(cell('일위대가표','E'+outlet).formula,'0.28*1.8');           // 6구
+  const outlet=row('Modular Outlet')[0];assert.equal(cell('일위대가표','E'+outlet).formula,'0.28*10.8');          // 6구: 180% × 6포트
   const rack=row('높이 2.2m 미만')[1];assert.equal(cell('일위대가표','G'+rack).formula,'0.48*0.3');               // 철거 불용 30%
   const rj45=row('8Pin Plug')[0];assert.equal(cell('일위대가표','E'+rj45).formula,'0.13*1.875');                  // 야간 품 25% × 노임 50%
   assert.match(cell('일위대가표','AF'+rj45).value,/노임 할증 ×1.5는 품셈에 포함/);
