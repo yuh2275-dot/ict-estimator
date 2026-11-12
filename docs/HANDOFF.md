@@ -13,6 +13,10 @@ Codex에서 시작한 작업(UTP 동시포설, 커밋 `4fa5825`)을 Claude Code�
 | [#3](https://github.com/yuh2275-dot/ict-estimator/pull/3) | 엑셀 저장을 설계내역서 통합문서(8개 시트, 수식 연결)로 교체. 공사정보에 "공사개요" 필드 추가 | `src/design-xlsx.js`(신규), `src/app.js` |
 | [#4](https://github.com/yuh2275-dot/ict-estimator/pull/4) | 원가계산서를 사용자 예시 양식에 맞춤: (A)~(H) 기호, 구성비, 간접재료비 행, 천원 미만 절사 | `src/design-xlsx.js` |
 | [#5](https://github.com/yuh2275-dot/ict-estimator/pull/5) | 공사원가계산 화면에 시트 미리보기 탭. 노임을 등록하면 확인 체크 전에도 노무비 자동 계산 | `src/engine.js`(`wageFor`), `src/app.js`(`costSheet`), `src/design-xlsx.js`(`toHtml`) |
+| #6, #7 | 인계 문서 `AGENTS.md`, `docs/HANDOFF.md`, `CLAUDE.md`(AGENTS.md 자동 로드) | 문서 |
+| (이번 PR) | **인계 문서 자동 갱신 장치** — 아래 2.4 | `tools/handoff-status.cjs`, `tools/update-handoff-log.cjs`, `.github/workflows/handoff-*.yml`, `.claude/` |
+
+[PR #9](https://github.com/yuh2275-dot/ict-estimator/pull/9)에서 수량 행 자재명·자재 규격을 추가했습니다. 검토 후 머지합니다.
 
 ## 2. 동작 요약
 
@@ -49,6 +53,24 @@ Codex에서 시작한 작업(UTP 동시포설, 커밋 `4fa5825`)을 Claude Code�
 - 총금액은 `ROUNDDOWN(총원가 + 부가가치세, -3)`입니다. 앱 화면 총액은 절사 전 금액입니다.
 - 공사원가계산 화면은 같은 `build()` 결과를 `toHtml()`로 그립니다. 확인 항목이 있어도 `{preview:true}`로 미리보기는 됩니다.
 
+### 2.4 인계 문서 자동 갱신 (사용량이 끊겨도 기록이 남도록)
+- **자동 기록**: `main`에 머지될 때마다 `.github/workflows/handoff-log.yml`이 `tools/update-handoff-log.cjs`를 실행합니다.
+  - 이 문서 맨 아래 AUTO-LOG 구간을 최근 머지 PR, 바뀐 파일, 테스트 결과로 다시 쓰고, `github-actions[bot]`이 `[skip ci]` 커밋으로 올립니다.
+  - AI 토큰을 쓰지 않습니다. 이 구간은 직접 고치지 마세요.
+- **PR 검사**: `.github/workflows/handoff-check.yml`이 있습니다.
+  - 코드(`src/`, `tests/`, `tools/`, 워크플로, `index.html` 등)를 바꾼 PR에서 이 문서가 함께 바뀌지 않으면 실패합니다.
+  - 문서 갱신이 필요 없는 PR은 `skip-handoff` 라벨을 붙이면 통과합니다.
+  - 로컬 확인: `node tools/handoff-status.cjs origin/main HEAD`
+- **Claude Code 훅**: `.claude/settings.json`에 설정했습니다.
+  - Stop: 응답을 끝내기 전에 "코드는 바뀌었는데 이 문서는 그대로"이면 한 번 막고 갱신을 지시합니다.
+  - SessionStart(compact·resume): 대화 요약·재개 직후 같은 내용을 상기시킵니다.
+  - Codex에는 이런 훅이 없어서 AGENTS.md 규칙과 PR 검사로 대신합니다.
+- **한계**: 한 응답 도중 사용 한도에 걸리면 그 응답의 작업은 기록되지 않습니다. 직전 PR까지의 판단 내용과 머지된 내용은 남습니다.
+
+### 2.4 수량 행 자재명·자재 규격
+- 공사비 산정과 수량산출에서 `materialName`과 `materialSpec`을 편집하고 작업 JSON에 저장합니다.
+- 연결된 재료비 행의 설계내역서와 자재단가산출기초에 반영합니다. 값이 없거나 공백이면 해당 필드의 품셈 공종명 또는 규격을 사용합니다.
+
 ## 3. 사용자 확인이 필요한 해석 (아직 답을 받지 못함)
 
 1. **해설 조건 결합 방식**: 원문에 명시가 없어 서로 다른 해설 조건을 **곱해서** 적용합니다(예: 트레이 1.2 × 케이블타이 1.1). 근거는 1-2-2-15 "기본 품: 각 장 해설란의 할증·감 요소가 감안된 품"입니다. 발주처 기준이 합산이면 `commentaryFactors`의 곱셈을 바꿔야 합니다.
@@ -61,7 +83,6 @@ Codex에서 시작한 작업(UTP 동시포설, 커밋 `4fa5825`)을 Claude Code�
   - PDF 줄바꿈 때문에 선택지 이름이 어색하게 잘린 것이 있습니다.
   - 한 문장이 절 안의 모든 규격에 해당하지는 않습니다(예: "4P는 130%").
   - 다음 문구는 자동 계수에서 제외하고 "그 밖의 해설"로만 표시합니다: 다른 규격 기준 비율("100P의 180%"), 단위당·마다 증분, "N%까지" 상한, 범위, 100% 이상의 "할증" 문구.
-- **재료비 품명**: 수량 행에 자재명 칸이 없어서, 설계내역서 재료비 줄에 공종명("UTP 케이블 포설")이 나옵니다.
 - **NUMBERSTRING**: 표지 한글 금액은 Excel 전용 함수라 LibreOffice·한셀·구글시트에서는 숫자만 나옵니다.
 - **구 기능**: `ExcelIO.write`(빈 설계내역서 양식에 쓰기)는 그대로 남아 있습니다. 행 수·직종 수 제한이 있고, 행별 노임 할증은 지원하지 않습니다.
 - **SECURITY.md**: 검증 기록이 예전 상태(테스트 18개 등)입니다. 갱신이 필요합니다.
@@ -70,7 +91,7 @@ Codex에서 시작한 작업(UTP 동시포설, 커밋 `4fa5825`)을 Claude Code�
 ## 5. 다음 작업 후보 (우선순위 순)
 
 1. 사용자 결정 반영: 3장의 1~3번
-2. 수량 행에 **자재명·자재 규격** 필드를 추가하고, 설계내역서·자재단가산출기초에 반영합니다.
+2. 수량 행에 **자재명·자재 규격** 필드를 추가하고, 설계내역서·자재단가산출기초에 반영했습니다. PR #9 검토 대기.
 3. 4-4(제어케이블) 등 많이 쓰는 장부터 자동 추출 해설을 **수작업 규칙**(`commentaryRules`)으로 옮기기. 행별 적용 범위를 지정하고 테스트를 추가합니다.
 4. 노임 적용기간 일괄 수정 기능을 만듭니다. 엑셀에서 가져온 노임의 기본 기간(2026-01-01~08-31)이 하반기 공사와 맞지 않는 문제가 실제로 있었습니다.
 5. SECURITY.md 검증 기록 갱신
@@ -84,3 +105,23 @@ Codex에서 시작한 작업(UTP 동시포설, 커밋 `4fa5825`)을 Claude Code�
   - 엑셀 테스트 데이터: `tests/fixtures-design-state.cjs`(합성 공사)
 - 엑셀 재계산 비교: `AGENTS.md`의 절차를 따릅니다. 지난 확인에서 숫자 셀 154개가 모두 앱 값과 일치했습니다. 수량·자재 수량·노임을 바꾼 뒤의 재계산도 일치했습니다.
 - 화면: Playwright로 `dist`를 띄워 공사비 산정 → 산정하기 → 미리보기 탭 → 엑셀 저장을 확인합니다. 내려받은 파일이 Node에서 만든 파일과 같은지도 비교했습니다.
+
+<!-- AUTO-LOG:START -->
+## 자동 기록 (머지할 때마다 GitHub Actions가 갱신, 직접 수정 금지)
+
+- 기준 커밋: `804bbf7` (2026-11-12)
+- 테스트: 통과 ?개 / 실패 ?개
+
+| 날짜 | PR | 제목 | 머지 커밋 |
+|---|---|---|---|
+| 2026-11-12 | [#8](https://github.com/yuh2275-dot/ict-estimator/pull/8) | 인계 문서(docs/HANDOFF.md) 자동 갱신 장치 | `804bbf7` |
+| 2026-11-12 | [#7](https://github.com/yuh2275-dot/ict-estimator/pull/7) | CLAUDE.md 추가 (AGENTS.md 자동 로드) | `707313a` |
+| 2026-11-12 | [#6](https://github.com/yuh2275-dot/ict-estimator/pull/6) | Codex 인계 문서 추가 (AGENTS.md, docs/HANDOFF.md) | `07761c3` |
+| 2026-11-11 | [#5](https://github.com/yuh2275-dot/ict-estimator/pull/5) | 공사원가계산 화면에서 원가계산서 미리보기 + 노임 등록 시 노무비 자동 계산 | `ef489b5` |
+| 2026-11-11 | [#4](https://github.com/yuh2275-dot/ict-estimator/pull/4) | 원가계산서를 예시 양식에 맞게 정리 | `de4a885` |
+| 2026-11-11 | [#3](https://github.com/yuh2275-dot/ict-estimator/pull/3) | 엑셀 저장을 설계내역서 통합문서(8개 시트, 수식 연결)로 변경 | `f0c46c3` |
+| 2026-11-11 | [#2](https://github.com/yuh2275-dot/ict-estimator/pull/2) | 추가 배율(해설 계수 직접입력) 중복·오입력 경고 | `53f5709` |
+| 2026-11-11 | [#1](https://github.com/yuh2275-dot/ict-estimator/pull/1) | 전체 품셈 공종 해설 할증 조건 반영 (4-3 수작업 대조 + 전체 자동 추출) | `c60328e` |
+
+위 기간에 바뀐 파일 (27개): `.claude/hooks/handoff-guard.cjs`, `.claude/settings.json`, `.github/workflows/handoff-check.yml`, `.github/workflows/handoff-log.yml`, `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/HANDOFF.md`, `index.html`, `src/app.js`, `src/commentary-data.js`, `src/design-xlsx.js`, `src/engine.js`, `src/estimate-ui.js`, `src/style.css`, `src/surcharges.js`, `src/xlsx.js`, `tests/catalog.test.cjs`, `tests/commentary.test.cjs`, `tests/design-xlsx.test.cjs`, `tests/excel.test.cjs`, `tests/fixtures-design-state.cjs`, `tests/surcharges.test.cjs`, `tests/wages.test.cjs`, `tools/extract_commentary.cjs`, `tools/handoff-status.cjs`, `tools/update-handoff-log.cjs`
+<!-- AUTO-LOG:END -->

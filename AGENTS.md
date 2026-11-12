@@ -10,6 +10,7 @@ node restore-reference.cjs        # 원문 이미지(src/reference) 복원. 테�
 node --test tests/*.test.cjs      # 전체 테스트 (현재 59개 통과)
 node build.cjs                    # dist/ 생성 (index.html, src, vendor만 복사)
 node tools/extract_commentary.cjs # 원문 [해 설] → src/commentary-data.js 재생성 (직접 수정 금지)
+node tools/handoff-status.cjs origin/main HEAD  # 코드 변경에 HANDOFF 갱신이 포함됐는지 확인
 ```
 
 로컬 확인: `python3 -m http.server 8765 --directory dist` 후 브라우저로 `http://localhost:8765/`.
@@ -39,6 +40,7 @@ node tools/extract_commentary.cjs # 원문 [해 설] → src/commentary-data.js 
 - 원문에 없는 계수는 만들지 마세요. 해석이 들어간 부분은 근거 문자열(`basis`)과 README에 적습니다.
 - 커밋·PR 메시지에 모델명을 쓰지 마세요. PR은 사용자가 확인 후 머지합니다.
 - 업무 Excel 원본, 실제 공사 데이터는 저장소에 넣지 마세요. 테스트 데이터는 합성 데이터만 씁니다.
+- **코드를 바꾸는 PR에는 `docs/HANDOFF.md` 갱신을 함께 넣으세요.** PR 검사(`handoff-check`)가 확인합니다. 작업 도중 사용량이 끊겨도 다음 작업자가 이어받을 수 있도록, 큰 작업은 중간중간 커밋할 때마다 갱신하는 것이 좋습니다. 갱신할 곳은 "머지된 변경", "동작 요약", "사용자 확인이 필요한 해석", "다음 작업"입니다. 맨 아래 AUTO-LOG 구간은 GitHub Actions가 쓰므로 고치지 마세요.
 
 ## 엑셀 출력 검증 (LibreOffice가 있을 때)
 
