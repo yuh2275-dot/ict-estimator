@@ -25,7 +25,7 @@ jobs:
         id: tests
         run: |
           node restore-reference.cjs
-          out=$(node --test tests/*.test.cjs 2>&1 || true)
+          out=$(node --test --test-reporter=tap tests/*.test.cjs 2>&1 || true)  # Node 24 기본 출력은 spec 형식이라 TAP으로 고정
           pass=$(echo "$out" | grep -E '^# pass' | awk '{print $3}')
           fail=$(echo "$out" | grep -E '^# fail' | awk '{print $3}')
           echo "summary=통과 ${pass:-?}개 / 실패 ${fail:-?}개" >> "$GITHUB_OUTPUT"
