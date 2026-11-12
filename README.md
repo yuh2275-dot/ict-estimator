@@ -66,7 +66,7 @@ node build.cjs
 
 ## 데이터 모델과 기준 연결
 
-`src/catalog-data.js`는 전체 문서와 4,032개 계산 후보를 제공합니다. `src/reference`에는 원문 587쪽의 이미지가 있습니다. `src/standards.js`는 기존에 대조한 6개 계산항목을 기본 제공합니다. 원본 PDF의 인쇄면 90~92쪽, PDF 120~122쪽을 텍스트와 렌더링 이미지로 대조했습니다. UTP 구내 4P, RJ45 플러그, Modular Outlet, 2.2m 미만 랙, 24포트 패치패널, 패치패널 성단을 포함합니다. 원문 전체 해설의 기계적 판정을 구현한 것은 아니므로 적용 조건을 확인해야 합니다.
+`src/catalog-data.js`는 전체 문서와 4,032개 계산 후보를 제공합니다. `src/reference`에는 원문 587쪽의 이미지가 있습니다. `src/standards.js`는 기존에 대조한 6개 계산항목을 기본 제공합니다. `src/standards-verified.js`는 3장 배관공사·4장 통신케이블공사 전체 779개 항목을 원문 페이지 이미지와 한 행씩 대조해 등록한 것입니다(2026-11-12). 텍스트로 추출되지 않던 표(3-2-2, 3-3-2, 3-4-2 등)와 자동 후보가 잘못 읽은 표(3-6-1 건축목공 누락 등)도 원문 기준으로 입력했습니다. 원본 PDF의 인쇄면 90~92쪽, PDF 120~122쪽을 텍스트와 렌더링 이미지로 대조했습니다. UTP 구내 4P, RJ45 플러그, Modular Outlet, 2.2m 미만 랙, 24포트 패치패널, 패치패널 성단을 포함합니다. 원문 전체 해설의 기계적 판정을 구현한 것은 아니므로 적용 조건을 확인해야 합니다.
 
 각 품셈은 id, code, name, spec, unit, baseQuantity, labor, year, version, source, page, verified, conditions, included, excluded, separate, revised, adjustments를 가집니다. labor는 직종별 base이며 adjustments는 id, name, factor, basis입니다. 기본 계수는 base입니다. 실제 자료 검증이 완료된 항목만 verified를 true로 설정합니다. 여러 조건의 동시 적용은 검증된 단일 조합 항목으로 사전에 구조화해야 합니다. 프로그램은 임의 계수 합산을 수행하지 않습니다.
 

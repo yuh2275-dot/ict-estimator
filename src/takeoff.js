@@ -14,18 +14,22 @@
   function standardsFor(state){return state.standards.filter(s=>s.verified&&Number(s.year)===Number(state.project.year));}
   function buildPrompt(state){
     const S=root.Surcharges;
-    const lines=standardsFor(state).map(s=>{
-      const adj=(s.adjustments||[]).filter(a=>a.id!=='base').map(a=>`${a.id}=${a.name}×${a.factor}`).join(', ');
-      const groups=S?S.commentary(s).groups.map(g=>g.type==='count'?`${g.id}(숫자 ${g.min}~, ${g.unit})`:`${g.id}(${g.choices.filter(c=>c.id!=='none').map(c=>c.id).join('|')})`).join(', '):'';
-      return `- standardId "${s.id}" | ${s.code} ${s.name} | 규격 ${s.spec} | 단위 ${s.unit}${adj?` | adjustment: ${adj}`:''}${groups?` | commentary: ${groups}`:''}${S?.supportsParallel(s)?' | parallelRuns(동시포설 열 수) 가능':''}`;
+    // 품셈 번호별로 묶어 규격을 나열한다(등록 품셈이 수백 건이어도 요청문이 지나치게 길어지지 않게).
+    const byCode=new Map();
+    for(const s of standardsFor(state)){if(!byCode.has(s.code))byCode.set(s.code,[]);byCode.get(s.code).push(s);}
+    const lines=[...byCode.entries()].map(([code,list])=>{
+      const first=list[0],units=[...new Set(list.map(s=>`${s.baseQuantity!==1?s.baseQuantity:''}${s.unit}`))].join('·');
+      const adj=[...new Set(list.flatMap(s=>(s.adjustments||[]).filter(a=>a.id!=='base').map(a=>`${a.id}=${a.name}×${a.factor}`)))].join(', ');
+      const groups=S?[...new Map(list.flatMap(s=>S.commentary(s).groups).map(g=>[g.id,g.type==='count'?`${g.id}(숫자 ${g.min}~, ${g.unit})`:`${g.id}(${g.choices.filter(c=>c.id!=='none').map(c=>c.id).join('|')})`])).values()].join(', '):'';
+      return `- ${code} ${first.name} [품셈 단위 ${units}]${adj?` adjustment: ${adj}`:''}${groups?` commentary: ${groups}`:''}${list.some(s=>S?.supportsParallel(s))?' parallelRuns 가능':''}\n  규격: ${list.map(s=>s.id.startsWith('v')?s.spec:`${s.spec} (standardId "${s.id}")`).join(' / ')}`;
     });
     return `첨부한 정보통신공사 도면(평면도·계통도·범례·물량표)을 읽고, 아래 JSON 형식으로 물량을 뽑아 주세요.
 이 결과는 "ICT Estimator" 공사비 산정 사이트의 [도면 물량 가져오기]에 붙여 넣어 2026년 정보통신공사 표준품셈으로 계산합니다.
 
 ## 규칙
 1. JSON 하나만 출력하세요(설명은 JSON의 "assumptions"에). 코드블록으로 감싸도 됩니다.
-2. 아래 "등록된 품셈"에 맞는 항목은 반드시 그 standardId를 쓰세요. 목록에 없는 공종은 standardId 없이 2026 표준품셈 번호(code)·공종명(name)·규격(spec)을 쓰면 사이트가 원문 후보와 맞춥니다.
-3. quantity는 그 품셈의 단위로 적습니다. 케이블은 m(케이블 총길이), 콘센트·플러그·랙·패널은 개수입니다.
+2. 아래 "등록된 품셈"에 맞는 항목은 품셈 번호를 code에, 목록의 규격 문구를 spec에 **그대로 복사**하세요(standardId가 적힌 항목은 standardId도). 목록에 없는 공종은 2026 표준품셈 번호(code)·공종명(name)·규격(spec)을 쓰면 사이트가 원문 후보와 맞춥니다.
+3. quantity는 그 품셈의 기본 단위(m, 개, 대, 개소, 코어 등)로 적습니다. "10m"·"100m"처럼 품셈 단위에 수가 붙어 있어도 quantity는 실제 m 수입니다. 케이블은 m(케이블 총길이), 콘센트·플러그·랙·패널은 개수입니다.
    - 정보콘센트는 콘센트 개수를 quantity로, 구수는 commentary {"ports": 구수}로 적습니다(사이트가 포트 수로 환산).
    - 같은 경로에 여러 가닥을 함께 포설하면 parallelRuns(열 수)를 적고 quantity는 케이블 총길이로 적습니다.
 4. basis에 산출 근거(예: "(28m×4)+(25m×2)", "도면 2층 평면도 범례 기준")를, location에 층·실명을 적습니다.
@@ -75,7 +79,12 @@ ${lines.join('\n')||'- (등록된 품셈 없음: code·name·spec으로 적어 �
     let v=0;
     if(a&&b&&a===b)v+=10;else if(a&&b&&(a.includes(b)||b.includes(a)))v+=6;
     else if(a&&b){const t=[...new Set(String(item.spec).split(/[\s/,·]+/).map(norm).filter(Boolean))];v+=t.filter(x=>b.includes(x)).length*2;}
+    // 숫자(호칭·규격 치수)가 모두 같으면 가산: "16mm" ↔ "호칭 16"
+    const nums=t=>(String(t).replace(/,(?=\d{3})/g,'').match(/\d+(?:\.\d+)?/g)||[]);
+    const na=nums(item.spec),nb=nums(s.spec);
+    if(na.length&&na.every(x=>nb.includes(x)))v+=3;else if(na.length&&nb.length&&!na.some(x=>nb.includes(x)))v-=3;
     if(n1&&n2&&(n1.includes(n2)||n2.includes(n1)))v+=3;
+    if(n1&&b.includes(n1)&&n1.length>=2)v+=3; // 공종명(예: 합성수지전선관)이 규격에 들어 있으면 가산
     if(item.unit&&unitKey(item.unit)===unitKey(s.unit))v+=1;
     return v;
   }
@@ -83,7 +92,7 @@ ${lines.join('\n')||'- (등록된 품셈 없음: code·name·spec으로 적어 �
     const ranked=list.map(s=>({s,v:score(item,s)})).sort((x,y)=>y.v-x.v);
     if(!ranked.length)return null;
     const [best,second]=ranked;
-    return {standard:best.s,score:best.v,ambiguous:!!second&&second.v===best.v&&best.v<10};
+    return {standard:best.s,score:best.v,ambiguous:!!second&&second.v===best.v}; // 동점이면 항상 확인 필요
   }
   function match(state,data){
     const S=root.Surcharges,verified=standardsFor(state);
@@ -96,7 +105,7 @@ ${lines.join('\n')||'- (등록된 품셈 없음: code·name·spec으로 적어 �
       if(!standard&&item.code){
         // 같은 품셈 번호라도 규격·공종명이 비슷해야 연결한다(예: 4-3-3 110 Block을 패치패널에 붙이지 않음).
         const m=pick(item,verified.filter(s=>s.code===String(item.code).trim()));
-        if(m&&m.score>=MIN_SCORE){standard=m.standard;if(m.score<10||m.ambiguous)issues.push(`규격이 정확히 맞지 않아 "${m.standard.spec}"로 연결했습니다. 확인하세요.`);}
+        if(m&&m.score>=MIN_SCORE){standard=m.standard;if(norm(item.spec)!==norm(m.standard.spec)||m.ambiguous)issues.push(`규격이 정확히 맞지 않아 "${m.standard.spec}"로 연결했습니다${m.ambiguous?'(비슷한 규격이 여러 개)':''}. 확인하세요.`);}
       }
       if(!standard){
         const m=item.code?pick(item,drafts.filter(d=>d.code===String(item.code).trim())):null;

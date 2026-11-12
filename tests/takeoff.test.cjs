@@ -5,8 +5,9 @@ require('../src/standards.js');
 const S=require('../src/surcharges.js');
 const E=require('../src/engine.js');
 const T=require('../src/takeoff.js');
+const BASE=structuredClone(globalThis.initialStandards); // standards-verified.js를 불러오기 전의 기본 6개
 // 합성 상태와 합성 AI 답변(실제 도면 아님)
-const state=()=>({version:1,project:{name:'',location:'',date:'2026-09-01',year:2026,summary:''},standards:structuredClone(globalThis.initialStandards),quantities:[],materials:[],expenses:[],wages:[],rates:[],ratesReviewed:false,rounding:'floor',history:[]});
+const state=()=>({version:1,project:{name:'',location:'',date:'2026-09-01',year:2026,summary:''},standards:structuredClone(BASE),quantities:[],materials:[],expenses:[],wages:[],rates:[],ratesReviewed:false,rounding:'floor',history:[]});
 const answer={format:'ict-estimator-takeoff',version:1,project:{name:'테스트 정비공사',location:'1F',summary:'UTP 배선;랙 신설'},
   items:[
     {standardId:'utp4',code:'4-3-1',name:'UTP 케이블 포설',spec:'구내 4P',unit:'m',quantity:400,location:'1F',basis:'(25m×16)',materialName:'UTP 케이블',adjustment:'tray',commentary:{bind:'tie'},parallelRuns:4,confidence:'high'},
@@ -21,8 +22,9 @@ const answer={format:'ict-estimator-takeoff',version:1,project:{name:'테스트 
 test('the prompt lists registered standards with their condition ids and the output format',()=>{
   const p=T.buildPrompt(state());
   assert.match(p,/"format": "ict-estimator-takeoff"/);
-  assert.match(p,/standardId "utp4" \| 4-3-1 UTP 케이블 포설 \| 규격 구내 4P \| 단위 m \| adjustment: tray=/);
-  assert.match(p,/commentary: .*ports\(숫자 1~, 구\)/);assert.match(p,/parallelRuns\(동시포설 열 수\) 가능/);
+  assert.match(p,/- 4-3-1 UTP 케이블 포설 \[품셈 단위 10m\] adjustment: tray=/);
+  assert.match(p,/규격: 구내 4P \(standardId "utp4"\)/);
+  assert.match(p,/commentary: .*ports\(숫자 1~, 구\)/);assert.match(p,/parallelRuns 가능/);
 });
 test('answers are read from plain JSON, code fences or surrounding text',()=>{
   const json=JSON.stringify(answer);
@@ -45,6 +47,15 @@ test('items are matched to standards, conditions are validated and problems are 
   assert.match(zero.issues.join(),/수량이 없거나 0/);
   assert.equal(r.materials[0].price,0);assert.match(r.materials[0].source,/단가 입력 필요/);
   assert.deepEqual(r.assumptions,['축척 1/100']);
+});
+test('verified standards are matched by spec numbers and names, ties ask for a check',()=>{
+  const V=require('../src/standards-verified.js');
+  const st=state();st.standards=[...structuredClone(BASE),...structuredClone(V)];
+  const r=T.match(st,{items:[{code:'3-1-1',name:'후강전선관',spec:'22',unit:'m',quantity:10},{code:'3-1-1',name:'CD관',spec:'16',unit:'m',quantity:10},{code:'4-4-1',name:'제어케이블',spec:'2C 1.5㎟',unit:'m',quantity:30}]});
+  assert.equal(r.rows[0].standard.spec,'후강 전선관 호칭 22');assert.equal(r.rows[0].status,'check');assert.doesNotMatch(r.rows[0].issues.join(),/여러 개/);
+  assert.equal(r.rows[1].status,'check');assert.match(r.rows[1].issues.join(),/여러 개/);
+  assert.equal(r.rows[2].standard.spec,'2C 1.5㎟');assert.equal(r.rows[2].status,'ok');
+  assert.ok(T.buildPrompt(st).length<40000,'요청문 길이');
 });
 test('apply adds unchecked rows that calculate, and fills only empty project fields',()=>{
   const s=state();s.project.location='기존 위치';
