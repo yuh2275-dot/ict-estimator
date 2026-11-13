@@ -21,7 +21,7 @@ test('4-4-1 manually verified commentary preserves saved ids and counts total ca
 });
 const state=(standard,row)=>({project:{year:2026,date:'2026-06-01'},rounding:'floor',materials:[],expenses:[],standards:[standard],
   quantities:[{id:'q',standardId:standard.id,length:10,count:1,reviewed:true,adjustment:'base',...row}],
-  wages:['통신케이블공','통신내선공','통신설비공','보통인부'].map(trade=>({trade,price:100000,from:'2026-01-01',to:'2026-12-31',source:'TEST ONLY'})),rates:[],ratesReviewed:true});
+  wages:['통신케이블공','통신내선공','통신설비공','보통인부','광케이블설치사','통신외선공','특별인부'].map(trade=>({trade,price:100000,from:'2026-01-01',to:'2026-12-31',source:'TEST ONLY'})),rates:[],ratesReviewed:true});
 
 test('each built-in item offers only its own commentary groups and hides already-registered ones',()=>{
   const ids=id=>S.commentary(builtin(id)).groups.map(g=>g.id);
@@ -160,4 +160,52 @@ test('4-6-1~4-6-3 manually verified commentary keeps saved ids and adds missing 
   close(S.commentaryFactors(head,{commentary:{b1n2:'c1'}}).factor,.3);
   close(S.commentaryFactors(head,{commentary:{b1n2:'c2',b1n3:'c1'}}).factor,1.5);
   assert.throws(()=>S.commentaryFactors(head,{commentary:{b1n2:'c1',b1n3:'c1'}}),/함께 선택할 수 없습니다/);
+});
+test('3-1-1, 4-1-1, 4-2-1, 4-5-1 manual commentary shows only the conditions of each row',()=>{
+  const V=require('../src/standards-verified.js'),row=(code,re)=>V.find(s=>s.code===code&&re.test(s.spec));
+  const ids=s=>S.commentary(s).groups.map(g=>g.id),f=(s,c)=>S.commentaryFactors(s,{commentary:c}).factor;
+  // 3-1-1: ② 콘크리트 노출 120% 추가, ⑤는 합성수지관, ⑥은 후강·합성수지관에만
+  const pvc=row('3-1-1',/합성수지 전선관 호칭 16$/),steel=row('3-1-1',/후강 전선관 호칭 16$/),flex=row('3-1-1',/금속제 가요 전선관 호칭 16$/);
+  assert.equal(S.commentary(pvc).extracted,false);
+  assert.deepEqual(ids(pvc),['b1n2','b1n3','b1n4','b1n5','b1n6','b1n7','b1n10']);
+  assert.deepEqual(ids(steel),['b1n2','b1n3','b1n4','b1n6','b1n7','b1n10']);
+  assert.deepEqual(ids(flex),['b1n2','b1n3','b1n4','b1n7','b1n10']);
+  close(f(pvc,{b1n2:'c3'}),1.2);close(f(pvc,{b1n2:'c1'}),1.25);close(f(pvc,{b1n5:'c1',b1n7:'c1'}),.72);
+  assert.throws(()=>f(steel,{b1n6:'c1',b1n3:'c1'}),/함께 선택할 수 없습니다/);
+  // 4-1-1: 행별 조건과 직종별 계수
+  const manual=row('4-1-1',/지중 인력견인/),air=row('4-1-1',/지중 공기압력/),aerial=row('4-1-1',/^가공 포설/),duct=row('4-1-1',/^내관포설 23/),slim=row('4-1-1',/슬림형/),pull=row('4-1-1',/견인선 포설 인력/);
+  assert.deepEqual(ids(manual),['b1n1','b1n6','b1n10','b1n17','b1n25','b1n26']);
+  assert.deepEqual(ids(aerial),['b1n1','b1n8','b1n22','b1n25','b1n26']);
+  assert.deepEqual(ids(duct),['b1n4']);assert.deepEqual(ids(slim),['b1n15','b1n16']);assert.deepEqual(ids(pull),[]);
+  const eight=S.combined(manual,{adjustment:'base',commentary:{b1n10:'c1'}});
+  assert.equal(eight.laborFactor,1);assert.deepEqual(eight.tradeFactors,{보통인부:1.15});assert.match(eight.basis,/직종별\(보통인부 ×1\.15\)/);
+  const r=E.calculate(state(manual,{length:1000,commentary:{b1n10:'c1'}}));assert.deepEqual(r.errors,[]);
+  const md=t=>r.labor[0].details.find(d=>d.trade===t).manDays;
+  close(md('광케이블설치사'),.94*10);close(md('보통인부'),1.41*10*1.15);
+  const both=S.combined(air,{adjustment:'base',commentary:{b1n12:'c1',b1n1:'c1'}});
+  close(both.laborFactor,1.1);assert.deepEqual(both.tradeFactors,{광케이블설치사:1.28,통신외선공:1.23,특별인부:1.31});
+  for(const [n,x] of [[2,1],[3,1.8],[4,2.6]])close(f(slim,{b1n15:n}),x);
+  close(f(aerial,{b1n8:'c1',b1n22:'c1'}),.84);
+  assert.throws(()=>f(aerial,{b1n8:'c1',b1n26:'c1'}),/함께 선택할 수 없습니다/);
+  close(f(manual,{b1n26:'c2'}),.9);
+  // 4-2-1: 가공 이설은 가공설치품(120%)의 70%
+  const coaxDuct=row('4-2-1',/지하관로 포설 5C/),coaxIn=row('4-2-1',/옥내 포설 5C/);
+  assert.deepEqual(ids(coaxIn),['b1n8','b1n9','b1n11','b1n12']);
+  close(f(coaxDuct,{b1n5:'c2'}),.84);close(f(coaxDuct,{b1n12:'c2'}),.9);
+  assert.throws(()=>f(coaxDuct,{b1n2:'c1',b1n5:'c1'}),/함께 선택할 수 없습니다/);
+  // 4-5-1: 구간별 체감, 규격, 2선 동시
+  const leaky=row('4-5-1',/^포설$/),unpack=row('4-5-1',/포장해체/);
+  assert.deepEqual(ids(unpack),[]);
+  close(f(leaky,{b1n2:300}),1);close(f(leaky,{b1n2:800}),(300+200*.8+300*.7)/800);close(f(leaky,{b1n2:4000}),(300+200*.8+500*.7+1000*.6+1000*.5+1000*.4)/4000);
+  close(f(leaky,{b1n5:'c1',b1n4:'c2'}),.8*.9);
+});
+test('trade-specific commentary factors reach the Excel unit-price formulas',async()=>{
+  const V=require('../src/standards-verified.js'),D=require('../src/design-xlsx.js');
+  const manual=V.find(s=>s.code==='4-1-1'&&/지중 인력견인/.test(s.spec));
+  const s=state(manual,{length:500,commentary:{b1n10:'c1',b1n1:'c1'}});s.rates=[];
+  const r=E.calculate(s);assert.deepEqual(r.errors,[]);
+  const {sheets}=D.build(s,r),us=sheets.find(x=>x.name==='일위대가표');
+  const formulas=[...us.cells.values()].map(c=>c.formula).filter(Boolean);
+  assert.ok(formulas.includes('0.94*1.1'),formulas.join(' | '));assert.ok(formulas.includes('1.41*1.265'),formulas.join(' | '));
+  require('../src/xlsx.js');await assert.rejects(globalThis.ExcelIO.write(null,s,r),/직종별 해설 조건/);   // 구 빈 양식은 행마다 계수 하나뿐
 });

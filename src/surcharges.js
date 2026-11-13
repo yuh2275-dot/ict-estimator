@@ -121,6 +121,82 @@
       {id:'b1n2',name:'단말 방식',basis:'해설 ②',choices:[none('케이블 헤드 포함 단말처리'),choice('c1','압착단자만 · 신설 30%',.3),choice('c2','압착단자만 · 살아있는 케이블 100%',1)]},
       {id:'b1n3',name:'증설·이설',basis:'해설 ③',excludes:{b1n2:['c1']},choices:[none('신설'),choice('c1','증설 및 이설 Y접속(절체) 150%',1.5)]}
     ]},
+    // 3-1-1·4-1-1·4-2-1·4-5-1은 원문 이미지(PDF 91·109~110·118·124쪽) 대조. 행(관 종류·포설 방식)에 해당하는 조건만 표시한다.
+    '3-1-1':{page:61,notes:[
+      '① 콘크리트 매입 기준. 관의 절단·나사내기·구부리기·나사조임·관내청소·점검 포함',
+      '② 콘크리트 노출 시 앵커볼트 설치 및 구멍뚫기는 3-7 부대공사 별도',
+      '⑥ 지중 매설 시 굴착·되메우기·잔토처리 별도. 합성수지 주름관 지중 매설은 2-1-3 적용',
+      '⑧ 여러 개의 전선관을 동시에 배관해도 각각의 해당 품셈 적용 (동시 할증 없음)',
+      '⑨ 신호수 등 안전 인력·안전시설은 1-1-27-1 안전시설 적용'
+    ],groups:t=>[
+      {id:'b1n2',name:'설치 장소·구조',basis:'해설 ②',choices:[none('콘크리트 매입 (기본)'),choice('c3','콘크리트 노출·블록칸막이 벽 내 120%',1.2),choice('c2','목조건물 110%',1.1),choice('c1','철강조 노출 125%',1.25)]},
+      {id:'b1n3',name:'천장속·마루밑',basis:'해설 ③',choices:[none('해당 없음'),choice('c1','천장속·마루밑 공사 130%',1.3)]},
+      {id:'b1n4',name:'방폭 설비',basis:'해설 ④',choices:[none('일반'),choice('c1','방폭 설비 120%',1.2)]},
+      /합성수지/.test(t)&&{id:'b1n5',name:'관 종류',basis:'해설 ⑤',choices:[none('합성수지 전선관'),choice('c1','폴리에틸렌 전선관·합성수지제 휨(가요) 전선관(CD·PF관) 80%',.8)]},
+      /후강|합성수지/.test(t)&&{id:'b1n6',name:'지중 매설',basis:'해설 ⑥',excludes:{b1n2:true,b1n3:true},choices:[none('건물 내 배관'),choice('c1','지중 매설 70% (KS규격품 4m 기준, 굴착 등 별도)',.7)]},
+      {id:'b1n7',name:'반복 공정',basis:'해설 ⑦',choices:[none('일반'),choice('c1','공동주택·교실 등 동일 반복공정 90%',.9)]},
+      {id:'b1n10',name:'작업 구분',basis:'해설 ⑩',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 30%',.3),choice('c2','철거 (재사용) 40%',.4)]}
+    ]},
+    '4-1-1':{page:79,notes:[
+      '② 기계견인포설 장비사용시간 10분/100m, 가공포설(고소작업차) 124분/100m 기준. 기계경비는 1-4 기준으로 별도 계상(⑳)',
+      '③ 주관로 청소는 2-1-7 적용 · ⑤ 견인선 인력포설(4㎜)은 내관청소·선통 포함',
+      '⑦ 인공내 스파이럴슬리브 설치는 4-7-1 해설 ⑫ 적용',
+      '⑨ 젤리충진·해킹방지(IB)·가요성 금속피 광섬유케이블도 본 품셈 적용 (할증 없음)',
+      '⑪ 교량·터널·지상 공동관로(트로프) 내 포설은 지중 인력견인포설 품셈 적용',
+      '⑭ 공기압력포설품에는 내관청소, 정리·소운반, 맨홀내 여장정리·고정 포함',
+      '⑱ 슬림형 내관에 케이블 포설 시 견인선 포설 품셈 미적용 · ⑲ SCD관 포설은 내관포설 품셈 · ㉑ 슬림형 내관을 PE(결합형) 내관·트로프에 포설해도 본 품셈',
+      '㉓ 열차감시원은 보통인부 1.0인을 별도 행으로 가산',
+      '㉔ 신호수 등 안전 인력·안전시설은 1-1-27-1, 위험 할증은 공통 할증 1-2-2-5에서 선택'
+    ],groups:t=>{
+      const cable=/싱글\/멀티모드/.test(t),underground=cable&&/지중/.test(t),aerial=cable&&/가공/.test(t);
+      return [
+      cable&&{id:'b1n1',name:'코어 수',basis:'해설 ①',choices:[none('720코어 미만'),choice('c1','720코어 110%',1.1)]},
+      /내관포설/.test(t)&&!/슬림형/.test(t)&&countGroup('b1n4','내관 동시 포설 열 수','해설 ④',{min:1,step:1,unit:'열',perUnit:true,factor:sequence,hint:'수량은 내관 총길이(m)입니다. 2열 180% · 3열 260% · 4열 340%, 이후 1열당 80% 가산(내관견인을 위한 견인선 포설 포함). 예: 경로 100m × 3열 → 수량 300m, 계수 2.6÷3.'}),
+      underground&&{id:'b1n6',name:'통신구·동도',basis:'해설 ⑥',choices:[none('일반 관로 (슬림형 내관 사용 포함)'),choice('c1','통신구·동도내 포설 115%',1.15)]},
+      aerial&&{id:'b1n8',name:'가공 이설·처짐 조정',basis:'해설 ⑧',excludes:{b1n26:true,b1n25:true},choices:[none('신설'),choice('c1','철거가 수반되지 않는 가공 이설 70%',.7),choice('c2','처짐(정도) 조정 20%',.2)]},
+      /인력견인포설/.test(t)&&cable&&{id:'b1n10',name:'8자 포설',basis:'해설 ⑩',choices:[none('일반'),{...choice('c1','8자 포설 · 보통인부에 한하여 15% 가산',1.15),trades:{보통인부:1.15}}]},
+      /공기압력포설/.test(t)&&cable&&{id:'b1n12',name:'양방향 포설',basis:'해설 ⑫',choices:[none('단방향'),{...choice('c1','양방향 포설 · 광케이블설치사 128%, 통신외선공 123%, 특별인부 131%',1),trades:{광케이블설치사:1.28,통신외선공:1.23,특별인부:1.31}}]},
+      /내관이음/.test(t)&&{id:'b1n13',name:'내관할입이음',basis:'해설 ⑬',choices:[none('일반 내관이음'),choice('c1','통과인공내 내관할입이음 175% (내관인출 포함)',1.75)]},
+      /슬림형/.test(t)&&countGroup('b1n15','슬림형 내관 조 수','해설 ⑮',{min:1,step:1,unit:'조',factor:n=>n<=2?1:1+.8*(n-2),hint:'본 품셈은 2조 이하 기준입니다. 3조부터 1조 추가당 80%를 더합니다(3조 180%, 4조 260%). 수량은 경로길이(m)로 입력합니다.'}),
+      /슬림형/.test(t)&&{id:'b1n16',name:'추가 포설',basis:'해설 ⑯',choices:[none('신규 관로'),choice('c1','케이블 수용관로내 슬림형 내관 추가 포설 130%',1.3)]},
+      underground&&{id:'b1n17',name:'슬림형 내관 용적률',basis:'해설 ⑰',choices:[none('용적률 16% 이하 또는 해당 없음'),choice('c1','관로내 슬림형 내관 · 용적률 16% 초과 32% 이하 115% (광케이블 1조당)',1.15)]},
+      aerial&&{id:'b1n22',name:'자기지지형',basis:'해설 ㉒',choices:[none('일반'),choice('c1','자기지지형 광섬유케이블 120%',1.2)]},
+      cable&&{id:'b1n25',name:'철거 케이블 다시 감기',basis:'해설 ㉕',demolition:true,excludes:{b1n26:true},choices:[none('해당 없음'),choice('c1','철거 케이블을 풀어서 다시 감기 (신설의 40%)',.4)]},
+      cable&&{id:'b1n26',name:'작업 구분',basis:'해설 ㉖',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 50%',.5),choice('c2','철거 (재활용, 드럼에 감기) 90%',.9)]}
+    ];}},
+    '4-2-1':{page:88,notes:[
+      '① 터파기·되메우기·관로설치·트로프 설치는 별도',
+      '③ PE 내관·견인선 포설은 4-1-1 적용',
+      '⑥ 인입선 가설은 조당 본 품셈의 48% (바인딩 별도) — 단위가 달라 추가 배율로 직접 입력',
+      '⑦ RG(17, 8/H, 11/U) 케이블은 지하관로 포설 품셈 적용',
+      '⑨ 가요성 금속피 케이블의 앵커볼트 설치는 별도 계상',
+      '⑩ 신호수 등 안전 인력·안전시설은 1-1-27-1 안전시설 적용'
+    ],groups:t=>{
+      const duct=/지하관로/.test(t),indoor=/옥내/.test(t);
+      return [
+      duct&&{id:'b1n2',name:'자기지지형',basis:'해설 ②',excludes:{b1n5:true},choices:[none('일반'),choice('c1','자기지지형 케이블 120% (가공 포함)',1.2)]},
+      duct&&{id:'b1n4',name:'통신구·동도',basis:'해설 ④',excludes:{b1n5:true},choices:[none('지하관로'),choice('c1','통신구·동도내 포설 115%',1.15)]},
+      duct&&{id:'b1n5',name:'가공 설치',basis:'해설 ⑤',choices:[none('지하관로'),choice('c1','가공 설치 120% (자기지지형 제외)',1.2),choice('c2','가공케이블 이설 · 가공설치품(120%)의 70% = 84%',.84)]},
+      countGroup('b1n8','동시 설치 열 수','해설 ⑧',{min:1,step:1,unit:'열',perUnit:true,factor:sequence,hint:'수량은 케이블 총길이(m)입니다. 2열 180% · 3열 260% · 4열 340%, 이후 1열당 80% 가산.'}),
+      indoor&&{id:'b1n9',name:'금속피 여부',basis:'해설 ⑨',choices:[none('일반 외피'),choice('c1','가요성 금속피 (알루미늄·스틸) 옥내 포설 150% (앵커볼트 별도)',1.5)]},
+      {id:'b1n11',name:'철거 케이블 다시 감기',basis:'해설 ⑪',demolition:true,excludes:{b1n12:true},choices:[none('해당 없음'),choice('c1','철거 케이블을 풀어서 다시 감기 (신설의 40%)',.4)]},
+      {id:'b1n12',name:'작업 구분',basis:'해설 ⑫',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 50%',.5),choice('c2','철거 (재활용, 드럼에 감기) 90%',.9)]}
+    ];}},
+    '4-5-1':{page:94,notes:[
+      '① 앵커볼트·클램프 설치 포함',
+      '③ 드럼 풀기와 감기는 포장해체 및 점검 품셈 적용',
+      '⑤ 본 품셈은 ⅞″ 기준'
+    ],groups:t=>{
+      const lay=/포설/.test(t);
+      return [
+      lay&&countGroup('b1n2','체감 적용 포설 연장 (구내 제외)','해설 ②',{min:1,step:1,unit:'m',factor:n=>{
+        const bands=[[300,1],[500,.8],[1000,.7],[2000,.6],[3000,.5],[Infinity,.4]];let prev=0,sum=0;
+        for(const [to,rate] of bands){if(n<=prev)break;sum+=(Math.min(n,to)-prev)*rate;prev=to;}
+        return sum/n;},hint:'구내 포설이면 비워 두세요. 한 번에 포설하는 전체 연장(m)을 넣으면 구간별 적용률(300m 이하 100%, 301~500m 80%, 501~1,000m 70%, 1,001~2,000m 60%, 2,001~3,000m 50%, 3,001m 이상 40%)을 구간마다 적용한 평균 계수를 씁니다. 예: 800m → (300 + 200×0.8 + 300×0.7) ÷ 800 = 0.8375.'}),
+      lay&&{id:'b1n4',name:'2선 동시 설치',basis:'해설 ④',choices:[none('1선'),choice('c1','2선 동시 180% · 수량 = 경로길이(1선분)',1.8),choice('c2','2선 동시 180% ÷ 2 · 수량 = 케이블 총길이',.9)]},
+      lay&&{id:'b1n5',name:'케이블 규격',basis:'해설 ⑤',choices:[none('⅞″ (기준)'),choice('c1','½″ 80%',.8),choice('c3','1¼″ 110%',1.1),choice('c2','1⅝″ 120%',1.2)]},
+      lay&&{id:'b1n6',name:'작업 구분',basis:'해설 ⑥',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 30%',.3),choice('c2','철거 (재사용) 80%',.8)]}
+    ];}},
     '4-3-1':{page:90,notes:['① 몰딩 설치는 3-5-3 몰딩(Molding) 적용','④ 성단은 4-3-3 별도 계상','⑨ 철가 및 케이블 포설포박은 5-1-1 기초설치(공통) 적용','⑪ 신호수·안전시설은 1-1-27-1 안전시설 적용'],groups:t=>[
       /구내/.test(t)&&{id:'place',name:'설치 장소',basis:'해설 ①',choices:[none('관로 및 Pit (기본)'),choice('tray','벽잠핑·플로어덕트·케이블 트레이·랙 120%',1.2),choice('floor','바닥 노출 80%',.8)]},
       /(^|[^0-9])100P/.test(t)&&countGroup('pairs','UTP·STP·FTP 실제 대수 (P)','해설 ②',{min:100,step:100,unit:'P',factor:n=>{if(n%100)throw Error('대수는 100P 단위로 입력하세요.');return sequence(n/100);},hint:'200P 180% · 300P 260% · 400P 340% · 400P 초과는 100P당 80% 가산'}),
@@ -190,7 +266,7 @@
     if(typeof values!=='object'||Array.isArray(values))throw Error('공종 해설 조건 형식 오류');
     const known=new Set(groups.map(g=>g.id));
     for(const key of Object.keys(values))if(!known.has(key))throw Error(`이 공종에 없는 해설 조건입니다: ${key}`);
-    const applied=[];let factor=1,demolition=false;
+    const applied=[],tradeFactors={};let factor=1,demolition=false;
     for(const g of groups){
       const raw=values[g.id];
       if(g.type==='count'){
@@ -207,6 +283,11 @@
       const c=g.choices.find(c=>c.id===raw);
       if(!c)throw Error(`${g.name}: 허용되지 않은 선택입니다.`);
       if(c.demolition??g.demolition)demolition=true;
+      // trades: 원문이 직종을 지정한 비율(예: 4-1-1 ⑩ 보통인부에 한하여 15% 가산)은 해당 직종 품에만 곱한다.
+      if(c.trades){
+        for(const [trade,f] of Object.entries(c.trades))tradeFactors[trade]=(tradeFactors[trade]??1)*f;
+        applied.push({group:g.id,name:c.name,factor:1,trades:c.trades,basis:g.basis});continue;
+      }
       applied.push({group:g.id,name:c.name,factor:c.factor,basis:g.basis});factor*=c.factor;
     }
     const chosen=id=>{const v=values[id];return v==null||v===''||v==='none'?null:v;};
@@ -215,7 +296,7 @@
       if(!o||chosen(g.id)==null||chosen(other)==null||(ids!==true&&!ids.includes(chosen(other))))continue;
       throw Error(`"${g.name}"과(와) "${o.name}" 조건은 같은 작업을 두 번 반영하므로 함께 선택할 수 없습니다. 행을 나누세요.`);
     }
-    return {factor,applied,demolition};
+    return {factor,applied,demolition,tradeFactors};
   }
   function resolve(selection){
     const item=items.find(i=>i.id===selection.id);
@@ -264,9 +345,10 @@
     if(notes.demolition&&materialPercent)throw Error('철거 행에는 재료 할증을 적용하지 않습니다.');
     const laborFactor=finite(special.factor)*notes.factor*parallelWork.perCableFactor*(1+laborPercent/100),wageFactor=1+wagePercent/100;
     const parallelBasis=parallelWork.runs>1?`4-3-1 해설 ⑧ (인쇄 90쪽): ${parallelWork.runs}열 동시포설, 경로길이 기준 ×${parallelWork.bundleFactor} / 케이블 총길이 기준 ×(${parallelWork.bundleFactor}÷${parallelWork.runs}); 입력 기준: ${parallelWork.mode==='route'?'1열 경로길이':'케이블 총길이'}`:'';
-    const commentaryText=notes.applied.map(a=>`×${Number(a.factor.toFixed(6))}`).join(' ');
-    return {id:special.id,name:[special.name,...notes.applied.map(a=>a.name),parallelWork.runs>1?`${parallelWork.runs}열 동시포설`:'',...selected.map(i=>i.name)].filter(Boolean).join(' / '),factor:laborFactor*wageFactor,laborFactor,wageFactor,laborPercent,wagePercent,materialPercent,materialFactor:1+materialPercent/100,specialFactor:Number(special.factor),commentaryFactor:notes.factor,commentary:notes.applied,demolition:notes.demolition,selected,parallel:parallelWork,
-      basis:[special.basis,...notes.applied.map(a=>`${a.name} · ${a.basis}`),parallelBasis,...selected.map(i=>`${i.name} ${i.rate}%${i.wageRate?` + 노임 ${i.wageRate}%`:''} · ${i.basis}`),`공종계수 ${special.factor}${notes.applied.length?` × 해설 조건(${commentaryText})`:''}${parallelWork.runs>1?` × 동시포설(${parallelWork.bundleFactor}÷${parallelWork.runs})`:''} × 품(1 + ${laborPercent}%) × 노임(1 + ${wagePercent}%)`].filter(Boolean).join(' / ')};
+    const commentaryText=notes.applied.filter(a=>!a.trades).map(a=>`×${Number(a.factor.toFixed(6))}`).join(' ');
+    const tradeText=Object.entries(notes.tradeFactors).map(([t,f])=>`${t} ×${Number(f.toFixed(6))}`).join(', ');
+    return {id:special.id,name:[special.name,...notes.applied.map(a=>a.name),parallelWork.runs>1?`${parallelWork.runs}열 동시포설`:'',...selected.map(i=>i.name)].filter(Boolean).join(' / '),factor:laborFactor*wageFactor,laborFactor,wageFactor,laborPercent,wagePercent,materialPercent,materialFactor:1+materialPercent/100,specialFactor:Number(special.factor),commentaryFactor:notes.factor,tradeFactors:notes.tradeFactors,commentary:notes.applied,demolition:notes.demolition,selected,parallel:parallelWork,
+      basis:[special.basis,...notes.applied.map(a=>`${a.name} · ${a.basis}`),parallelBasis,...selected.map(i=>`${i.name} ${i.rate}%${i.wageRate?` + 노임 ${i.wageRate}%`:''} · ${i.basis}`),`공종계수 ${special.factor}${commentaryText?` × 해설 조건(${commentaryText})`:''}${tradeText?` × 직종별(${tradeText})`:''}${parallelWork.runs>1?` × 동시포설(${parallelWork.bundleFactor}÷${parallelWork.runs})`:''} × 품(1 + ${laborPercent}%) × 노임(1 + ${wagePercent}%)`].filter(Boolean).join(' / ')};
   }
   // 추가 배율(직접입력)이 해설 조건과 겹치거나 개수로 잘못 입력된 것으로 보이면 경고한다. 저장 시 사용자가 확인해야 한다.
   function customWarnings(standard,row){

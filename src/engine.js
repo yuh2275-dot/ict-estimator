@@ -78,9 +78,10 @@
         if (!row.reviewed) errors.push(standard.name + (row.location ? ` (${row.location})` : '') + ' · 품셈·적용 조건 확인 필요 (공사비 산정에서 체크)');
         const details = standard.labor.map(item => {
           const wage = wageFor(state, item.trade, wageIssues);
-          const manDays = number(item.base) * quantity / number(standard.baseQuantity) * adjustment.laborFactor;
+          const tradeFactor = adjustment.tradeFactors?.[item.trade] ?? 1;
+          const manDays = number(item.base) * quantity / number(standard.baseQuantity) * adjustment.laborFactor * tradeFactor;
           const appliedWage=number(wage.price)*adjustment.wageFactor;
-          return {trade:item.trade, base:item.base, manDays, wage:number(wage.price), appliedWage, amount:manDays * appliedWage, source:wage.source||'', wageFrom:wage.from, wageTo:wage.to, missingWage:!!wage.missing};
+          return {trade:item.trade, base:item.base, tradeFactor, manDays, wage:number(wage.price), appliedWage, amount:manDays * appliedWage, source:wage.source||'', wageFrom:wage.from, wageTo:wage.to, missingWage:!!wage.missing};
         });
         const amount = round(details.reduce((s,d) => s + d.amount, 0), state.rounding);
         labor.push({...row, standard, quantity, inputQuantity, routeLength:quantity/adjustment.parallel.runs, adjustment, details, amount}); directLabor += amount;

@@ -45,6 +45,7 @@
     if(result.consumables?.enabled)throw Error('잡재료 일괄 계상은 공사원가계산의 설계내역서 Excel 저장을 사용하세요. 기존 빈 양식은 선택 자재 기준금액을 연결할 수 없습니다.');
     if(result.errors.length) throw Error('검토 항목을 먼저 해결하세요.');
     if(result.expenseRows?.length)throw Error('기계·기타경비가 포함된 작업은 공사원가계산의 엑셀 저장을 사용하세요.');
+    if(result.labor.some(row=>Object.keys(row.adjustment.tradeFactors||{}).length))throw Error('직종별 해설 조건(예: 보통인부에 한한 가산)은 공사원가계산의 엑셀 저장을 사용하세요. 기존 빈 양식은 행마다 계수 하나만 지원합니다.');
     if(result.labor.some(row=>row.adjustment.wageFactor!==1))throw Error('행별 노임 할증은 공사원가계산의 엑셀 저장을 사용하세요. 기존 빈 양식은 직종당 하나의 노임만 지원합니다.');
     if(result.materials.length>9 || result.labor.length>20) throw Error('빈 양식 입력 공간 초과 (재료 9행, 공종 20행)');
     const sheets=template.sheets.map(s=>({...s})),changes=[];
