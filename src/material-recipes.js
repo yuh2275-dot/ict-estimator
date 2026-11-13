@@ -30,8 +30,12 @@
     {code:'4-3-1',make:s=>[{id:'cable',label:'꼬임케이블',main:main(/UTP|구내 4P/.test(s.spec+s.name)?'UTP 케이블':s.spec.split(' ')[0]+' 케이블',(s.spec.match(/\d+P/)||[''])[0]),lossHint:/옥외/.test(s.spec)?LOSS_HINT.cableOut:LOSS_HINT.cableIn}]},
     {code:'4-3-2',make:s=>{
       const t=`${s.name} ${s.spec}`;
-      if(has(t,/RJ45|Plug/i))return [{id:'rj45',label:'RJ45 커넥터 + 보호캡',extras:[x('랜 커넥터','RJ45 8P8C','개',1),x('보호캡','RJ45용','개',1)]}];
-      if(has(t,/Outlet|콘센트/i))return [{id:'outlet',label:'모듈러 잭(포트 수) + 플레이트',extras:[x('모듈러 잭','RJ45','개','ports'),x('아울렛 플레이트','','개',1)]}];
+      if(has(t,/RJ45|Plug/i))return [
+        {id:'rj45',label:'RJ45 커넥터 + 보호캡',extras:[x('랜 커넥터','RJ45 8P8C','개',1),x('보호캡','RJ45용','개',1)],note:'커넥터 단가에 보호캡이 포함되면 보호캡 포함 구성을 선택하세요.'},
+        {id:'rj45-included',label:'RJ45 커넥터 (보호캡 포함 단가)',extras:[x('랜 커넥터','RJ45 8P8C (보호캡 포함)','개',1)],note:'커넥터와 보호캡을 합한 단가를 입력합니다. 보호캡을 따로 더하지 않습니다.'}];
+      if(has(t,/Outlet|콘센트/i))return [
+        {id:'outlet',label:'모듈러 잭(포트 수) + 플레이트',extras:[x('모듈러 잭','RJ45','개','ports'),x('아울렛 플레이트','','개',1)]},
+        {id:'outlet-jacks',label:'모듈러 잭만 (플레이트 별도·포함)',extras:[x('모듈러 잭','RJ45','개','ports')],note:'플레이트가 박스·주자재 단가에 포함되거나 다른 행에 별도 계상된 경우 선택하세요.'}];
       if(has(t,/TELCO/i))return [{id:'telco',label:'TELCO 커넥터',extras:[x('TELCO 커넥터','50Pin','개',1)]}];
       return [];}},
     {code:'4-3-3',make:s=>{
@@ -48,7 +52,7 @@
       if(has(t,/MDF/))return [{id:'mdf',label:'MDF',main:main('MDF','23″ Standard')}];
       return [];}},
     {code:/^4-1-(1|3|4)$|^4-1-6$/,make:s=>/포설/.test(s.spec+s.name)&&!/내관이음|견인선/.test(s.spec)?[{id:'fiber',label:'광케이블',main:main(s.code==='4-1-4'?'광전복합케이블':'광케이블',(s.spec.match(/\d+코어|\d+㎟/)||[''])[0]),lossHint:/지중|가공/.test(s.spec)?LOSS_HINT.cableOut:LOSS_HINT.cableIn}]:[]},
-    {code:'4-1-2-1',make:s=>/접속/.test(s.spec)?[{id:'splice',label:'광접속 슬리브',extras:[x('광접속 슬리브','','개',1)]}]:/광접속함체/.test(s.spec)?[{id:'closure',label:'광접속함체',main:main('광접속함체','')}]:[]},
+    {code:'4-1-2-1',make:s=>/접속/.test(s.spec)&&!/광접속함체/.test(s.spec)?[{id:'splice',label:'광접속 슬리브',extras:[x('광접속 슬리브','','개',1)]}]:/광접속함체/.test(s.spec)?[{id:'closure',label:'광접속함체',main:main('광접속함체','')}]:[]},
     {code:'4-1-2-2',make:s=>/국내성단/.test(s.spec)?[{id:'term',label:'피그테일 + 어댑터',extras:[x('피그테일','','개',1),x('광 어댑터','','개',1)]}]:[{id:'box',label:s.spec.replace(/\s*설치$/,''),main:main(s.spec.replace(/\s*설치$/,''),'')}]},
     {code:/^4-(2-1|4-1|6-1|7-1|8-1|10)$/,make:s=>/커넥터/.test(s.spec)?[]:[{id:'cable',label:'케이블',main:main(s.code==='4-4-1'?'제어용 케이블':s.code==='4-6-1'?'전력케이블':s.code==='4-7-1'?'시내케이블':s.code==='4-10'?'PVC 케이블':s.code==='4-2-1'?'동축케이블':s.spec.replace(/\s*\S+\s*이하.*$/,''),s.spec),
       lossHint:/지중|가공|지하/.test(s.spec)?LOSS_HINT.cableOut:LOSS_HINT.cableIn}]},
@@ -91,3 +95,4 @@
   root.MaterialRecipes={forStandard,priceBook,apply,keyOf,LOSS_HINT};
   if(typeof module!=='undefined')module.exports=root.MaterialRecipes;
 })(globalThis);
+

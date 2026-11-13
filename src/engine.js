@@ -1,6 +1,7 @@
 (function (root) {
   'use strict';
   const Surcharges=root.Surcharges||(typeof require==='function'?require('./surcharges.js'):null);
+  const Consumables=root.Consumables||(typeof require==='function'?require('./consumables.js'):null);
   const number = value => {
     const n = Number(value);
     if (value === '' || !Number.isFinite(n) || n < 0 || n > 1e12) throw Error('0 이상 유효한 숫자를 입력하세요.');
@@ -33,6 +34,7 @@
       materials.push({...row, amount}); material += amount;
     }
     for (const row of state.quantities) {
+      const materialStart=materials.length, materialBefore=material;
       try {
         const standard = state.standards.find(s => s.id === row.standardId);
         if (!standard || !standard.verified) throw Error('기준자료 미등록');
@@ -45,7 +47,7 @@
           const price = number(row.materialPrice);
           const materialQuantity=quantity*adjustment.materialFactor;
           const amount = round(materialQuantity * price, state.rounding);
-          materials.push({quantityId:row.id,role:'main',name:row.materialName?.trim()||standard.name,spec:row.materialSpec?.trim()||standard.spec,unit:standard.unit,quantity:materialQuantity,installationQuantity:quantity,perUnit:1,materialFactor:adjustment.materialFactor,price,amount,source:[row.materialSource,adjustment.materialPercent?`재료 할증 ${adjustment.materialPercent}% (1-1-6)`:''].filter(Boolean).join(' · ')});
+          materials.push({quantityId:row.id,role:'main',consumableBase:row.consumableBase===true,name:row.materialName?.trim()||standard.name,spec:row.materialSpec?.trim()||standard.spec,unit:standard.unit,quantity:materialQuantity,installationQuantity:quantity,perUnit:1,materialFactor:adjustment.materialFactor,price,amount,source:[row.materialSource,adjustment.materialPercent?`재료 할증 ${adjustment.materialPercent}% (1-1-6)`:''].filter(Boolean).join(' · ')});
           material += amount; mainAmount = amount;
         }
         // 자재 구성: 작업 1단위당 들어가는 부자재(예: 패치코드 1개 = UTP 케이블 3m + RJ45 2개)와 부속품률(3-1-2, 주자재 금액 × %)
@@ -69,7 +71,7 @@
           if (!priced) errors.push(`${standard.name}${row.location ? ` (${row.location})` : ''} · 자재 "${name}${x.spec?` ${x.spec}`:''}" 단가 입력 필요`);
           const qty = quantity * per * (1 + loss / 100);
           const amount = round(qty * price, state.rounding);
-          materials.push({quantityId:row.id,role:'extra',extra:k,name,spec:String(x.spec||''),unit:String(x.unit||'개'),quantity:qty,installationQuantity:quantity,perUnit:per,materialFactor:1+loss/100,price,amount,source:[x.source,loss?`재료 할증 ${loss}% (1-1-6)`:''].filter(Boolean).join(' · ')});
+          materials.push({quantityId:row.id,role:'extra',consumableBase:x.consumableBase===true,extra:k,name,spec:String(x.spec||''),unit:String(x.unit||'개'),quantity:qty,installationQuantity:quantity,perUnit:per,materialFactor:1+loss/100,price,amount,source:[x.source,loss?`재료 할증 ${loss}% (1-1-6)`:''].filter(Boolean).join(' · ')});
           material += amount;
         }
         // 확인이 끝나지 않았어도 노무비는 계산해 보여 준다. 확인 필요 사항은 errors에 남겨 엑셀 저장만 막는다.
@@ -82,7 +84,11 @@
         });
         const amount = round(details.reduce((s,d) => s + d.amount, 0), state.rounding);
         labor.push({...row, standard, quantity, inputQuantity, routeLength:quantity/adjustment.parallel.runs, adjustment, details, amount}); directLabor += amount;
-      } catch (e) { errors.push((row.location || '수량 행') + ' · ' + e.message); }
+      } catch (e) {
+        // 잘못된 부자재가 있는 행의 주자재만 부분 합산하지 않는다.
+        materials.splice(materialStart);material=materialBefore;
+        errors.push((row.location || '수량 행') + ' · ' + e.message);
+      }
     }
     errors.push(...wageIssues.values());
     const expenseRows = (state.expenses || []).map(row => ({...row, amount:expenseAmount(row,state.rounding)}));
@@ -92,6 +98,8 @@
       totalsByTrade.set(detail.trade, (totalsByTrade.get(detail.trade) || 0) + detail.amount);
     }
     directLabor = [...totalsByTrade.values()].reduce((sum, amount) => sum + round(amount, state.rounding), 0);
+    const consumables=Consumables.calculate(state,materials,round);
+    material+=consumables.amount;errors.push(...consumables.errors);
     const bases = {material, directLabor, expense};
     const ids = new Set(Object.keys(bases));
     for (const rule of state.rates) {
@@ -113,8 +121,9 @@
     if (!state.ratesReviewed) errors.push('공사금액·기간·종류·기관별 제비율 검토 필요');
     // 총공사금액은 천원 미만을 절사한다(사용자 결정, 2026-11-12). 절사 전 금액은 totalBeforeCut.
     const totalBeforeCut = material+directLabor+expense+costs.reduce((s,c)=>s+c.amount,0);
-    return {materials,labor,costs,expenseRows,material,directLabor,expense,totalBeforeCut,total:Math.floor(totalBeforeCut/1000)*1000,errors};
+    return {materials,labor,costs,expenseRows,consumables,material,directLabor,expense,totalBeforeCut,total:Math.floor(totalBeforeCut/1000)*1000,errors};
   }
   root.Estimator = {number,round,calculate,expenseAmount};
   if (typeof module !== 'undefined') module.exports = root.Estimator;
 })(globalThis);
+

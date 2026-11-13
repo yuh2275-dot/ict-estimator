@@ -9,6 +9,17 @@ const D=require('../src/design-xlsx.js');
 // 합성 데이터: 수량·단가는 시험용 값
 const std=id=>structuredClone(globalThis.initialStandards.find(s=>s.id===id));
 const cord=V.find(s=>s.code==='4-3-3'&&/Cord/.test(s.spec)),pvc16=V.find(s=>s.spec==='합성수지 전선관 호칭 16');
+test('fiber closure recipes select the closure rather than a splice sleeve',()=>{
+  const closure=V.find(s=>s.code==='4-1-2-1'&&/광접속함체/.test(s.spec));
+  assert.ok(closure);assert.equal(R.forStandard(closure)[0].id,'closure');
+});
+test('included cap and separately priced plate options prevent duplicate materials',()=>{
+  const rj=R.forStandard(std('rj45'));assert.deepEqual(rj.map(r=>r.id),['rj45','rj45-included']);
+  assert.equal(rj[1].extras.length,1);assert.match(rj[1].extras[0].spec,/보호캡 포함/);
+  assert.notEqual(R.keyOf(rj[0].extras[0].name,rj[0].extras[0].spec),R.keyOf(rj[1].extras[0].name,rj[1].extras[0].spec));
+  const outlet=R.apply({commentary:{ports:6}},R.forStandard(std('outlet'))[1]);
+  assert.equal(outlet.extraMaterials.length,1);assert.equal(outlet.extraMaterials[0].perUnit,6);
+});
 const state=(standard,row)=>({project:{year:2026,date:'2026-06-01',name:'시험'},rounding:'floor',materials:[],expenses:[],rates:[],ratesReviewed:true,standards:[standard],
   quantities:[{id:'q',standardId:standard.id,length:1,count:1,adjustment:'base',reviewed:true,...row}],
   wages:['통신케이블공','보통인부','통신내선공'].map(trade=>({trade,price:100000,from:'2026-01-01',to:'2026-12-31',source:'TEST'}))});
@@ -62,3 +73,4 @@ test('recipes suggest sets per standard and reuse prices from the same project',
   assert.equal(plug.extraMaterials[0].price,600);assert.equal(plug.extraMaterials[0].source,'견적'); // 같은 품명·규격 단가 재사용
   assert.equal(plug.extraMaterials[1].price,null);
 });
+

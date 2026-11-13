@@ -44,13 +44,17 @@
     const recipes=globalThis.MaterialRecipes?MaterialRecipes.forStandard(selected):[];
     const book=globalThis.MaterialRecipes?MaterialRecipes.priceBook(host.getState()):new Map();
     const qty=rowQuantity(selected),extras=line.extraMaterials||[];
-    const mainAmount=line.materialPrice!=null&&line.materialPrice!==''?Math.floor(qty*Number(line.materialPrice)):null;
+    let materialFactor=1,materialIssue='';
+    try{materialFactor=Surcharges.combined(selected,line).materialFactor;}catch(e){materialIssue=e.message;}
+    const round=value=>Estimator.round(value,host.getState().rounding);
+    const mainQuantity=qty*materialFactor;
+    const mainAmount=!materialIssue&&line.materialPrice!=null&&line.materialPrice!==''?round(mainQuantity*Number(line.materialPrice)):null;
     const cur=recipes.find(r=>r.id===recipeChoice)||recipes[0];
     const known=[...book.keys()].map(k=>k.split('|')[0]);
     const extraRows=extras.map((e,i)=>{
       const ratio=e.ratioPercent!=null;
       const q=ratio?1:qty*Number(e.perUnit||0)*(1+Number(e.lossPercent||0)/100);
-      const amount=ratio?(mainAmount==null?null:Math.floor(mainAmount*Number(e.ratioPercent)/100)):(e.price==null||e.price===''?null:Math.floor(q*Number(e.price)));
+      const amount=ratio?(mainAmount==null?null:round(mainAmount*Number(e.ratioPercent)/100)):(e.price==null||e.price===''?null:round(q*Number(e.price)));
       const input=(f,v,type='text',extra='')=>`<input data-extra-index="${i}" data-extra-field="${f}" type="${type}" value="${esc(v??'')}" ${type==='number'?'min="0" step="any"':''} ${extra}>`;
       return `<tr><td>${input('name',e.name,'text','list="material-names"')}</td><td>${input('spec',e.spec)}</td><td>${ratio?'식':input('unit',e.unit)}</td>
         <td>${ratio?`주자재 금액 × ${input('ratioPercent',e.ratioPercent,'number')}%`:`${input('perUnit',e.perUnit,'number')} <small>/${esc(selected.unit)}</small>`}</td>
@@ -61,7 +65,7 @@
       ${recipes.length?`<div class="toolbar"><label>추천 구성 <select id="recipe-choice">${recipes.map(r=>`<option value="${esc(r.id)}" ${r===cur?'selected':''}>${esc(r.label)}</option>`).join('')}</select></label><button type="button" id="recipe-apply">추천 구성 적용</button>
         ${cur?.lossHint?`<small>재료 할증 상한(1-1-6): ${esc(cur.lossHint)}</small>`:''}${cur?.note?`<small>${esc(cur.note)}</small>`:''}</div>`:''}
       <div class="estimate-fields">${field('주자재 품명','materialName',line.materialName)}${field('주자재 규격','materialSpec',line.materialSpec)}${field(`주자재 단가 (원/${selected.unit})`,'materialPrice',line.materialPrice,'number')}${field('주자재 단가 출처','materialSource',line.materialSource)}</div>
-      <p class="muted">주자재 수량 = 시공수량 ${Number(qty.toFixed(3)).toLocaleString('ko-KR')}${esc(selected.unit)}${mainAmount!=null?` · 금액 ${money(mainAmount)}원`:' · 단가를 비우면 주자재 없음'} (재료 할증은 공통 할증의 1-1-6에서 선택)</p>
+      <p class="muted">주자재 수량 = 시공수량 ${Number(qty.toFixed(3)).toLocaleString('ko-KR')} × 재료 할증계수 ${materialFactor} = ${Number(mainQuantity.toFixed(3)).toLocaleString('ko-KR')}${esc(selected.unit)}${mainAmount!=null?` · 금액 ${money(mainAmount)}원`:' · 단가를 비우면 주자재 없음'} (재료 할증은 공통 할증의 1-1-6에서 선택)</p>${materialIssue?'<p class="error">'+esc(materialIssue)+'</p>':''}
       ${extras.length?`<div class="scroll"><table><thead><tr><th>부자재 품명</th><th>규격</th><th>단위</th><th>작업 1단위당 수량</th><th>할증 %</th><th>단가</th><th>출처</th><th>계산 수량</th><th>금액</th><th></th></tr></thead><tbody>${extraRows}</tbody></table></div>`:'<p class="muted">부자재 없음 — 커넥터·보호캡처럼 같이 들어가는 자재는 추가하세요.</p>'}
       <datalist id="material-names">${[...new Set(known)].map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>
       <div class="toolbar"><button type="button" id="extra-add">부자재 추가</button><button type="button" id="extra-add-ratio">부속품률 줄 추가</button></div></fieldset>`;
@@ -162,6 +166,7 @@
       <div class="scroll"><table><thead><tr><th>공종</th><th>규격</th><th>단위</th><th>수량</th><th>자재명</th><th>자재 규격</th><th>재료 단가</th><th>재료비</th><th>노무비</th><th>할증</th><th>관리</th></tr></thead><tbody>
       ${state.quantities.map((q,i)=>{const s=byId.get(q.standardId);let a;try{a=Surcharges.combined(s,q);}catch{}return `<tr><td>${esc(s?.name)}</td><td>${esc(s?.spec)}</td><td>${esc(s?.unit)}</td><td class="num">${money(q.length*q.count*(a?.parallel.quantityMultiplier??1))}${a?.parallel.runs>1?`<small>${a.parallel.runs}열 · 경로 ${money(q.length*q.count*(a.parallel.quantityMultiplier)/a.parallel.runs)}m</small>`:''}</td><td>${esc(q.materialName)||'—'}</td><td>${esc(q.materialSpec)||'—'}</td><td class="num">${q.materialPrice==null?'—':money(Number(q.materialPrice))}</td><td class="num">${money(materials.get(q.id)||0)}</td><td class="num">${labor.has(q.id)?money(labor.get(q.id)):'검토 필요'}</td><td><details><summary>${a?`${a.parallel.runs>1?a.parallel.runs+'열 · ':''}노무비 ×${Number(a.factor.toFixed(6))} / 재료 ×${a.materialFactor}`:'검토 필요'}</summary>${esc(a?.basis)}</details></td><td class="estimate-row-actions">${rowButtons(i)}</td></tr>`;}).join('')||'<tr><td colspan="11" class="muted">저장한 공종 없음</td></tr>'}
       </tbody></table></div></section>
+      ${Consumables.render(state,result)}
       <div class="estimate-expenses">${expenseSection('machine',expenseRows.filter(x=>x.row.kind==='machine'))}${expenseSection('other',expenseRows.filter(x=>x.row.kind==='other'))}</div>
       <section class="card estimate-footer"><div><small>검토 중 공사비 (천원 미만 절사)</small><strong>${money(result.total)}원</strong></div><div class="toolbar"><button data-nav="10">노임·제비율 설정</button><button class="primary" id="estimate-calculate">산정하기</button></div></section>`;
   }
@@ -218,7 +223,7 @@
         row.commentary=Object.fromEntries(Object.entries(line.commentary||{}).filter(([,v])=>v!==''&&v!=null&&v!=='none'));
         row.extraMaterials=(line.extraMaterials||[]).filter(e=>String(e.name||'').trim()).map(e=>{
           const clean={name:String(e.name).trim(),spec:String(e.spec||'').trim(),unit:String(e.unit||'개').trim()||'개',source:String(e.source||'').trim(),
-            price:e.price==null||e.price===''?null:Estimator.number(e.price)};
+            consumableBase:e.consumableBase===true,price:e.price==null||e.price===''?null:Estimator.number(e.price)};
           if(e.ratioPercent!=null&&e.ratioPercent!=='')return {...clean,unit:'식',ratioPercent:Estimator.number(e.ratioPercent),price:null};
           return {...clean,perUnit:Estimator.number(e.perUnit),lossPercent:e.lossPercent==null||e.lossPercent===''?0:Estimator.number(e.lossPercent),...(e.perPorts?{perPorts:true}:{})};
         });
@@ -287,6 +292,7 @@
   });
   document.addEventListener('change',event=>{
     const t=event.target;
+    if(t.dataset?.commentary!==undefined||t.dataset?.surchargeValue!==undefined||t.dataset?.surchargeNote!==undefined){host.refresh();return;}
     if(t.id==='recipe-choice'){recipeChoice=t.value;host.refresh();return;}
     if(t.dataset?.extraIndex!==undefined){
       const e=line.extraMaterials[Number(t.dataset.extraIndex)];
@@ -338,3 +344,4 @@
   function resetLine(){line=newLine();lineIndex=-1;quantityInput=null;}
   root.EstimateUI={render,choose,connect:callbacks=>{host=callbacks;},reset(){resetLine();expenseEditor=null;}};
 })(globalThis);
+

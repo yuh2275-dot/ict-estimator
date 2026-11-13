@@ -6,6 +6,19 @@ require('../src/standards.js');
 // Factors are the 2026 4-3-1~4-3-3 commentary rules (printed pages 90-92); quantities and wages are synthetic.
 const builtin=id=>structuredClone(globalThis.initialStandards.find(s=>s.id===id));
 const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-9,`${a} != ${b}`);
+test('4-4-1 manually verified commentary preserves saved ids and counts total cable length',()=>{
+  const standard=require('../src/standards-verified.js').find(s=>s.code==='4-4-1');
+  const info=S.commentary(standard);assert.equal(info.extracted,false);assert.equal(info.page,93);
+  assert.deepEqual(info.groups.map(g=>g.id),['b1n4','b1n5','b1n7','b1n8','b1n9']);
+  for(const [n,f] of [[1,1],[2,.9],[3,2.6/3],[4,.85],[5,.84]])close(S.commentaryFactors(standard,{commentary:{b1n8:n}}).factor,f);
+  const row={commentary:{b1n4:'c1',b1n5:'c1',b1n7:'c1',b1n8:4}};
+  close(S.commentaryFactors(standard,row).factor,.8*1.2*1.5*.85);
+  const s=state(standard,{...row,length:400,materialPrice:100});const r=E.calculate(s);
+  assert.deepEqual(r.errors,[]);assert.equal(r.material,40000);close(r.labor[0].details[0].manDays,standard.labor[0].base*400/10*.8*1.2*1.5*.85);
+  assert.equal(S.commentaryFactors(standard,{commentary:{b1n9:'c2'}}).demolition,true);
+  assert.throws(()=>S.combined(standard,{adjustment:'base',materialPrice:1,commentary:{b1n9:'c1'}}),/철거/);
+  assert.throws(()=>S.commentaryFactors(standard,{commentary:{b1n8:1.5}}),/정수/);
+});
 const state=(standard,row)=>({project:{year:2026,date:'2026-06-01'},rounding:'floor',materials:[],expenses:[],standards:[standard],
   quantities:[{id:'q',standardId:standard.id,length:10,count:1,reviewed:true,adjustment:'base',...row}],
   wages:['통신케이블공','통신내선공','통신설비공','보통인부'].map(trade=>({trade,price:100000,from:'2026-01-01',to:'2026-12-31',source:'TEST ONLY'})),rates:[],ratesReviewed:true});
@@ -119,3 +132,4 @@ test('custom multiplier warns when it repeats a selected commentary condition or
   assert.match(S.customWarnings(outlet,{...row,commentary:{},standardFactor:1})[0],/할증이 없는 것/);
   assert.deepEqual(S.customWarnings(outlet,{adjustment:'base',commentary:{ports:6}}),[]);
 });
+

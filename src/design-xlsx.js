@@ -124,6 +124,13 @@
       priceRef.set(m,'D'+r);r++;
     }
     mergeRuns(ms,4,r-1);
+    const consumables=result.consumables?.enabled?result.consumables:null;
+    let consumableRateRef;
+    if(consumables){
+      consumableRateRef='D'+r;
+      ms.set('A'+r,'잡재료 및 소모재료').set('B'+r,'1-1-12 적용률').set('C'+r,'%',S.center)
+        .set(consumableRateRef,Number(consumables.rate),S.decimal).set('E'+r,consumables.source||'');
+    }
 
     // ---------- 인건비산출기초 ----------
     const ws=sheet('인건비산출기초').widths([8,22,18,52]);
@@ -168,7 +175,7 @@
     }
     const totalRow=r;
     us.set('A'+r,'공량 합계',S.totalLabel).merge(`A${r}:D${r}`,S.totalLabel);
-    for(const t of trades){const c=tcol.get(t);us.set(colName(c)+r,null,S.totalLabel).set(colName(c+1)+r,tradeTotal.get(t)||0,S.totalDecimal,`SUM(${colName(c+1)}${first}:${colName(c+1)}${Math.max(first,r-1)})`);}
+    for(const t of trades){const c=tcol.get(t);us.set(colName(c)+r,null,S.totalLabel).set(colName(c+1)+r,tradeTotal.get(t)||0,S.totalDecimal,r>first?`SUM(${colName(c+1)}${first}:${colName(c+1)}${r-1})`:'0');}
     us.set(colName(codeCol)+r,null,S.totalLabel).set(last+r,null,S.totalLabel);
     mergeRuns(us,first,r-1);
 
@@ -193,8 +200,17 @@
       blankRow(r);r++;
     }
     mergeRuns(ds,matStart,r-1);
+    if(consumables){
+      const selected=materials.filter(({m})=>m.consumableBase===true&&m.role!=='ratio').map(({m})=>'F'+designRowOf(m));
+      const base=selected.length?`SUM(${selected.join(',')})`:'0';
+      ds.set('A'+r,'잡재료 및 소모재료').set('B'+r,'전선·케이블·배관자재 기준').set('C'+r,1,S.qty).set('D'+r,'식',S.center)
+        .set('E'+r,consumables.amount,S.money,`${RD}(${base}*자재단가산출기초!${consumableRateRef}/100,0)`)
+        .set('F'+r,consumables.amount,S.money,`${RD}(C${r}*E${r},0)`).set('I'+r,consumables.amount,S.money,`F${r}`)
+        .set('J'+r,`1-1-12 (인쇄 7쪽). 선택 재료비 × 적용률. ${consumables.source||''}`);
+      blankRow(r);r++;
+    }
     const matSub=r;
-    ds.set('A'+r,'소   계',S.totalLabel).merge(`A${r}:E${r}`,S.totalLabel).set('F'+r,result.material,S.totalMoney,`SUM(F${matStart}:F${Math.max(matStart,r-1)})`).set('G'+r,null,S.totalLabel).set('H'+r,null,S.totalLabel).set('I'+r,result.material,S.totalMoney,`F${r}`).set('J'+r,null,S.totalLabel);r++;
+    ds.set('A'+r,'소   계',S.totalLabel).merge(`A${r}:E${r}`,S.totalLabel).set('F'+r,result.material,S.totalMoney,r>matStart?`SUM(F${matStart}:F${r-1})`:'0').set('G'+r,null,S.totalLabel).set('H'+r,null,S.totalLabel).set('I'+r,result.material,S.totalMoney,`F${r}`).set('J'+r,null,S.totalLabel);r++;
     ds.set('A'+r,'2. 노무비',S.section);blankRow(r);r++;
     const labStart=r;
     for(const t of trades.filter(t=>used.has(t))){
@@ -205,7 +221,7 @@
     }
     if(r>labStart+1)ds.merge(`A${labStart}:A${r-1}`);
     const labSub=r;
-    ds.set('A'+r,'소   계',S.totalLabel).merge(`A${r}:G${r}`,S.totalLabel).set('H'+r,result.directLabor,S.totalMoney,`SUM(H${labStart}:H${Math.max(labStart,r-1)})`).set('I'+r,result.directLabor,S.totalMoney,`H${r}`).set('J'+r,null,S.totalLabel);r++;
+    ds.set('A'+r,'소   계',S.totalLabel).merge(`A${r}:G${r}`,S.totalLabel).set('H'+r,result.directLabor,S.totalMoney,r>labStart?`SUM(H${labStart}:H${r-1})`:'0').set('I'+r,result.directLabor,S.totalMoney,`H${r}`).set('J'+r,null,S.totalLabel);r++;
     let expSub=null;
     if(result.expenseRows.length){
       ds.set('A'+r,'3. 경비',S.section);blankRow(r);r++;
@@ -386,3 +402,4 @@
   root.DesignWorkbook={build,write,toHtml,koreanAmount,TRADES};
   if(typeof module!=='undefined')module.exports=root.DesignWorkbook;
 })(globalThis);
+

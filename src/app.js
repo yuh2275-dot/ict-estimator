@@ -47,6 +47,7 @@ function render(){
  if(active===1)html=`<div class="card grid">${Object.entries({name:'공사명',location:'공사 위치',date:'적용 기준일',year:'품셈 기준연도',duration:'공사기간 (일)',type:'공사종류',agency:'발주기관',summary:'공사개요 (표지에 표시 · 항목은 ;로 구분)'}).map(([k,l])=>`<label class="field">${l}${input('project.'+k,state.project[k],k==='date'?'date':['year','duration'].includes(k)?'number':'text')}</label>`).join('')}</div>`;
  if(active===3)html=table(['공종','자재명','자재 규격','위치 / 산출근거','길이·단위수량','개수','시공수량','적용 조건','조건 확인','행'],state.quantities.map((q,i)=>{const s=state.standards.find(s=>s.id===q.standardId);return `<tr><td>${esc(s?.name)}<p>${esc(s?.unit)}</p></td><td>${input('quantities.'+i+'.materialName',q.materialName)}</td><td>${input('quantities.'+i+'.materialSpec',q.materialSpec)}</td><td>${input('quantities.'+i+'.location',q.location)}${input('quantities.'+i+'.basis',q.basis)}</td><td>${input('quantities.'+i+'.length',q.length,'number')}</td><td>${input('quantities.'+i+'.count',q.count,'number')}</td><td>${money(q.length*q.count*Surcharges.parallel(s,q).quantityMultiplier)}<small>${q.parallelRuns>1?esc(q.parallelRuns+'열 · 입력: '+(q.parallelQuantityMode==='route'?'1열 경로길이':'케이블 총길이')):''}</small></td><td><select data-key="quantities.${i}.adjustment">${s?.adjustments.map(a=>`<option value="${esc(a.id)}" ${a.id===q.adjustment?'selected':''}>${esc(a.name)} × ${a.factor}</option>`).join('')}${q.adjustment==='custom'?'<option value="custom" selected>추가 배율 직접입력 × '+esc(q.standardFactor)+'</option>':''}</select><details><summary>적용 근거</summary>${esc(s?.conditions)}</details><button data-estimate-edit-line="${i}">공통 할증 편집</button><small>${esc([...(()=>{try{return Surcharges.commentaryFactors(s,q).applied.map(a=>a.name);}catch(e){return [e.message];}})(),...(q.surcharges||[]).map(a=>Surcharges.items.find(x=>x.id===a.id)?.name)].join(' / '))}</small></td><td><input type="checkbox" data-key="quantities.${i}.reviewed" ${q.reviewed?'checked':''}></td><td>${rowActions(i)}</td></tr>`;}));
  if(active===4)html=`<div class="toolbar"><button id="add-material" class="primary">자재 추가</button><span class="muted">셀에서 탭으로 이동 · 여러 셀의 탭 구분 붙여넣기 지원</span></div>${table(['자재명','규격','단위','단가','수량','조사일','출처','비고','금액','행'],state.materials.map((m,i)=>`<tr>${['name','spec','unit','price','quantity','date','source','note'].map(k=>`<td>${input('materials.'+i+'.'+k,m[k],['price','quantity'].includes(k)?'number':k==='date'?'date':'text')}</td>`).join('')}<td class="num">${money(result.materials[i].amount)}</td><td>${rowActions(i)}</td></tr>`))}`;
+ if(active===4)html+=Consumables.render(state,result);
  if(active===5 || active===6)html=table(['공종','수량','직종별 품량 / 노임 근거','노무비'],result.labor.map(l=>`<tr><td>${esc(l.standard.name)}<p>${esc(l.adjustment.basis)}</p></td><td>${l.quantity} ${esc(l.standard.unit)}</td><td>${l.details.map(d=>`${esc(d.trade)} · ${d.base} × ${l.quantity} ÷ ${l.standard.baseQuantity} × ${l.adjustment.laborFactor} = ${d.manDays.toFixed(6)}인<br>${money(d.wage)}원 × 노임 ${l.adjustment.wageFactor} = ${money(d.appliedWage)}원 · ${esc(d.source)}`).join('<hr>')}</td><td class="num">${money(l.amount)}</td></tr>`))+`<div class="card">재료비 ${money(result.material)}원 / 직접노무비 ${money(result.directLabor)}원<p class="muted">직접노무비는 Excel과 동일하게 직종별 공량을 합산한 뒤 원 단위 처리합니다.</p></div>`;
  if(active===8)html=`<div class="card"><h2>빈 설계내역서 연결</h2><input id="template-file" type="file" accept=".xlsx"><p class="muted">원본은 메모리에 유지됩니다. 제공된 빈내역 양식의 구조를 검사합니다. XLSM, 임베디드 개체 및 서명 파일은 지원하지 않습니다. 원본 외부 참조는 보존하며 별도 안내합니다.</p>${template?'<p>불러온 시트 · '+template.sheets.map(s=>esc(s.name)).join(' / ')+'</p>':''}</div><div class="card"><h2>노임단가 / 자재단가 가져오기</h2><select id="import-type"><option value="wages">노임단가</option><option value="materials">자재단가</option></select><input id="data-file" type="file" accept=".xlsx"><p class="muted">제공 양식의 인건비산출기초 B6:C18 또는 자재단가산출기초 A4:E25를 읽습니다. 노임 적용기간은 설정에서 확인하세요.</p></div>`;
  if(active===9)html=`<div class="card"><h2>원본 양식으로 Excel 생성</h2><p>재료비 9행 · 직종 7행 · 공종 19행까지 지원</p><p>기존 수식 변경 이력을 함께 저장할 수 있습니다. Excel에서 열면 전체 수식을 재계산합니다.</p><button id="export" class="primary">XLSX 다운로드</button> <button id="audit">최근 수식 변경 이력 저장</button><p class="muted">제공 빈 양식의 #REF! 2곳을 수정하고, 검토한 제비율로 기존 고정 요율을 교체합니다. 원본의 천원 단위 최종 절사는 원 단위 합계로 변경합니다.</p></div>`;
@@ -65,6 +66,7 @@ function validate(next){
  const date=v=>{text(v);if(!/^\d{4}-\d{2}-\d{2}$/.test(v)||!Number.isFinite(Date.parse(v)))throw Error('날짜 형식 오류');};
  date(next.project.date);Estimator.number(next.project.year);
  next.expenses??=[];
+ Consumables.validate(next.consumables);
  for(const k of ['materials','quantities','expenses','wages','rates','standards'])if(!Array.isArray(next[k])||next[k].length>50000)throw Error('목록 형식 또는 허용 건수 오류');
  for(const s of next.standards){
  if(!s.id||!s.source||!Array.isArray(s.labor)||s.baseQuantity<=0)throw Error('품셈 구조 오류');
@@ -100,7 +102,7 @@ document.addEventListener('change',async event=>{try{
  if(t.id==='open'){const data=JSON.parse(await t.files[0].text());
   // 예전 작업 파일에는 나중에 원문 대조로 추가된 기본 품셈이 없으므로 id 기준으로 빠진 것만 덧붙인다.
   const added=Array.isArray(data.standards)?initialStandards.filter(s=>!data.standards.some(x=>x.id===s.id)).map(s=>structuredClone(s)):[];if(added.length)data.standards.push(...added);
-  state=validate(data);template=null;EstimateUI.reset();BasisUI.reset();render();message('작업을 불러왔습니다. Excel 양식은 다시 연결하세요.');}
+  state=validate(data);template=null;EstimateUI.reset();BasisUI.reset();BasisImport.reset();render();message('작업을 불러왔습니다. Excel 양식은 다시 연결하세요.');}
  if(t.id==='template-file'){template=await ExcelIO.open(t.files[0]);render();message(['양식 파일을 브라우저 메모리에서 읽었습니다.',...template.warnings].join(' '));}
  if(t.id==='data-file'){
  const book=await ExcelIO.open(t.files[0]),type=$('#import-type').value;
@@ -156,7 +158,7 @@ document.addEventListener('click',async e=>{try{const t=e.target.closest('button
   download(workbook,`${state.project.name||'공사비 산정'}_설계내역서.xlsx`);message('설계내역서 Excel을 저장했습니다. 표지·원가계산서·집계표·설계내역서·일위대가표·물량산출근거·인건비산출기초·자재단가산출기초 시트가 수식으로 연결되어 있습니다.');
  }
  if(t.id==='security'){
- const entries=performance.getEntriesByType('resource');const allowed=['src/style.css?v=materials-1','vendor/jszip.min.js','src/engine.js?v=materials-1','src/standards-verified.js?v=verified-1','src/standards.js?v=cost-preview-1','src/commentary-data.js?v=cost-preview-1','src/surcharges.js?v=port-cut-1','src/rate-sheet.js?v=cost-preview-1','src/catalog-data.js','src/catalog-ui.js?v=cost-preview-1','src/xlsx.js?v=cost-preview-1','src/design-xlsx.js?v=materials-1','src/material-recipes.js?v=materials-1','src/takeoff.js?v=materials-1','src/estimate-ui.js?v=materials-1','src/app.js?v=materials-1','src/basis-ui.js?v=wage-period-1'];
+ const entries=performance.getEntriesByType('resource');const allowed=['src/basis-import.js?v=capture-basis-1','src/consumables.js?v=consumables-1','src/style.css?v=consumables-1','vendor/jszip.min.js','src/engine.js?v=consumables-1','src/standards-verified.js?v=verified-1','src/standards.js?v=cost-preview-1','src/commentary-data.js?v=cost-preview-1','src/surcharges.js?v=consumables-1','src/rate-sheet.js?v=cost-preview-1','src/catalog-data.js','src/catalog-ui.js?v=cost-preview-1','src/xlsx.js?v=consumables-1','src/design-xlsx.js?v=consumables-1','src/material-recipes.js?v=consumables-1','src/takeoff.js?v=consumables-1','src/estimate-ui.js?v=consumables-1','src/app.js?v=capture-basis-1','src/basis-ui.js?v=capture-basis-1'];
  const unexpected=entries.filter(r=>!allowed.some(a=>r.name===new URL(a,location.href).href) && !/^page-[0-9]{3}\.webp$/.test(r.name.startsWith(new URL('src/reference/',location.href).href)?r.name.slice(new URL('src/reference/',location.href).href.length):''));
  $('#security-result').textContent=`정적 리소스 ${entries.length}건 / 허용 목록 외 ${unexpected.length}건\nCSP connect-src 'none' 적용\n추가 검증은 README의 브라우저 네트워크 절차를 따르세요.`;
  }
@@ -184,14 +186,17 @@ Takeoff.connect({getState:()=>state,refresh:render,message,download,
  openDraft(id){active=2;returnToEstimate=true;CatalogUI.openDraft(id);render();},
  replace(next){state=validate(next);}
 });
+BasisImport.connect({getState:()=>state,refresh:render,message,download,replace(next){state=validate(next);BasisUI.reset();}});
 BasisUI.connect({getState:()=>state,refresh:render,update(type,apply){
  const next=structuredClone(state);
  apply(next[type]);
  if(type==='rates')next.ratesReviewed=false;
  state=validate(next);
 }});
+Consumables.connect({getState:()=>state,refresh:render,message,update(apply){const next=structuredClone(state);apply(next);state=validate(next);}});
 RateSheet.connect({getState:()=>state,refresh:render,
  update(apply){const next=structuredClone(state);apply(next.rates);next.ratesReviewed=false;state=validate(next);},
  loadTemplate(rows){const next=structuredClone(state);next.rates=rows;next.ratesReviewed=false;state=validate(next);}
 });
 render();
+

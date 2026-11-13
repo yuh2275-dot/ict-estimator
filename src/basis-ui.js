@@ -67,7 +67,7 @@
     const trades=[...new Set(state.standards.flatMap(s=>s.labor.map(l=>l.trade)))].sort((a,b)=>a.localeCompare(b,'ko'));
     const choices=[...Object.entries(baseLabels),...state.rates.slice(0,editing.rates<0?state.rates.length:editing.rates).map(r=>[r.id,r.name])];
     const status=rate.reviewed?(rate.enabled?'include':'exclude'):'pending';
-    return `<section class="card estimate-panel"><h2>노임단가 직접 입력</h2><form data-basis-form="wages"><div class="estimate-fields">
+    return `${BasisImport.render(state)}<section class="card estimate-panel"><h2>노임단가 직접 입력</h2><form data-basis-form="wages"><div class="estimate-fields">
       <label class="field">직종<input name="trade" list="basis-trades" value="${esc(wage.trade)}" required></label><datalist id="basis-trades">${trades.map(t=>`<option value="${esc(t)}"></option>`).join('')}</datalist>
       ${field('일 노임 (원)','price',wage.price,'number')}${field('적용 시작일','from',wage.from,'date')}${field('적용 종료일','to',wage.to,'date')}${field('출처','source',wage.source)}
       </div>${buttons('wages')}</form>
@@ -171,3 +171,4 @@
   root.BasisUI={render,applyWagePeriod,connect:callbacks=>{host=callbacks;},reset(){editing.wages=-1;editing.rates=-1;wageSelection=null;}};
   if(typeof module!=='undefined')module.exports=root.BasisUI;
 })(globalThis);
+
