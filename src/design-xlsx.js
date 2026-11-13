@@ -163,9 +163,9 @@
       us.set('A'+r,row.standard.name).set('B'+r,row.standard.spec).set('C'+r,num(row.quantity),S.qty,`물량산출근거!${qtyRef.get(row.id)}`).set('D'+r,bq!==1?`${num(bq)}${row.standard.unit}`:row.standard.unit,S.center);
       for(const t of trades){const c=tcol.get(t);us.set(colName(c)+r,null,S.decimal).set(colName(c+1)+r,null,S.decimal);}
       for(const d of row.details){
-        const c=tcol.get(d.trade),pc=colName(c)+r,perUnit=d.base*factor;
-        us.set(pc,num(perUnit),S.decimal,num(factor)===1?undefined:`${num(d.base)}*${num(factor)}`);
-        if(num(factor)===1)us.set(pc,num(d.base),S.decimal);
+        const c=tcol.get(d.trade),pc=colName(c)+r,f=factor*(d.tradeFactor??1),perUnit=d.base*f;
+        us.set(pc,num(perUnit),S.decimal,num(f)===1?undefined:`${num(d.base)}*${num(f)}`);
+        if(num(f)===1)us.set(pc,num(d.base),S.decimal);
         us.set(colName(c+1)+r,d.manDays*a.wageFactor,S.decimal,`${pc}*C${r}${bq!==1?'/'+num(bq):''}`);
         tradeTotal.set(d.trade,(tradeTotal.get(d.trade)||0)+d.manDays*a.wageFactor);
       }

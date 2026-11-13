@@ -9,7 +9,7 @@
   let search = {mode:'related',term:''};
   let host;
   let surchargeGroup='terrain';
-  function factorSummary(a){return `${a.parallel.runs>1?'케이블 총길이 기준 · ':''}${a.id==='custom'?'추가 배율':'공종 해설'} ×${a.specialFactor}${a.commentary.length?` × 해설 조건 ×${Number(a.commentaryFactor.toFixed(6))}`:''}${a.parallel.runs>1?` × 동시포설 (${a.parallel.bundleFactor} ÷ ${a.parallel.runs})`:''} × 품 (1 + ${Number(a.laborPercent.toFixed(4))}%) × 노임 (1 + ${a.wagePercent}%) = 노무비 ×${Number(a.factor.toFixed(6))} · 재료 ×${a.materialFactor}`;}
+  function factorSummary(a){return `${a.parallel.runs>1?'케이블 총길이 기준 · ':''}${a.id==='custom'?'추가 배율':'공종 해설'} ×${a.specialFactor}${a.commentary.length?` × 해설 조건 ×${Number(a.commentaryFactor.toFixed(6))}`:''}${Object.keys(a.tradeFactors||{}).length?` × 직종별 (${Object.entries(a.tradeFactors).map(([k,v])=>`${k} ×${Number(v.toFixed(6))}`).join(', ')})`:''}${a.parallel.runs>1?` × 동시포설 (${a.parallel.bundleFactor} ÷ ${a.parallel.runs})`:''} × 품 (1 + ${Number(a.laborPercent.toFixed(4))}%) × 노임 (1 + ${a.wagePercent}%) = 노무비 ×${Number(a.factor.toFixed(6))} · 재료 ×${a.materialFactor}`;}
   function parallelSummary(selected){
     try{
       const p=Surcharges.parallel(selected,line),input=Estimator.number(quantityInput??line.length*line.count),total=input*p.quantityMultiplier;
@@ -27,7 +27,7 @@
 
   const pageLink=(page,label)=>page?`<a href="src/reference/page-${String(page+30).padStart(3,'0')}.webp" target="_blank" rel="noopener">${esc(label??`인쇄 ${page}쪽`)}</a>`:'';
   function commentarySummary(selected){
-    try{const r=Surcharges.commentaryFactors(selected,line);return r.applied.length?`${r.applied.map(a=>`${a.name} ×${Number(a.factor.toFixed(6))}`).join(' · ')} = 해설 조건 ×${Number(r.factor.toFixed(6))}`:'해설 조건 없음 (×1)';}catch(error){return error.message;}
+    try{const r=Surcharges.commentaryFactors(selected,line);return r.applied.length?`${r.applied.map(a=>a.trades?`${a.name} (${Object.entries(a.trades).map(([k,v])=>`${k} ×${v}`).join(', ')})`:`${a.name} ×${Number(a.factor.toFixed(6))}`).join(' · ')} = 해설 조건 ×${Number(r.factor.toFixed(6))}`:'해설 조건 없음 (×1)';}catch(error){return error.message;}
   }
   function customWarning(selected){
     const warnings=Surcharges.customWarnings(selected,line);
@@ -164,7 +164,7 @@
       </div>${selected?.conditions?`<details><summary>적용 조건</summary>${esc(selected.conditions)}</details>`:''}${materialsEditor(selected)}${commentaryEditor(selected)}${parallelEditor(selected)}${surchargeEditor(selected)}
       <div class="toolbar"><label><input type="checkbox" name="reviewed" ${line.reviewed?'checked':''}> 품셈·적용 조건 확인</label><button type="submit" class="primary">${lineIndex<0?'항목 저장':'수정 저장'}</button>${lineIndex<0?'':'<button type="button" id="estimate-cancel-line">취소</button>'}</div></form>
       <div class="scroll"><table><thead><tr><th>공종</th><th>규격</th><th>단위</th><th>수량</th><th>자재명</th><th>자재 규격</th><th>재료 단가</th><th>재료비</th><th>노무비</th><th>할증</th><th>관리</th></tr></thead><tbody>
-      ${state.quantities.map((q,i)=>{const s=byId.get(q.standardId);let a;try{a=Surcharges.combined(s,q);}catch{}return `<tr><td>${esc(s?.name)}</td><td>${esc(s?.spec)}</td><td>${esc(s?.unit)}</td><td class="num">${money(q.length*q.count*(a?.parallel.quantityMultiplier??1))}${a?.parallel.runs>1?`<small>${a.parallel.runs}열 · 경로 ${money(q.length*q.count*(a.parallel.quantityMultiplier)/a.parallel.runs)}m</small>`:''}</td><td>${esc(q.materialName)||'—'}</td><td>${esc(q.materialSpec)||'—'}</td><td class="num">${q.materialPrice==null?'—':money(Number(q.materialPrice))}</td><td class="num">${money(materials.get(q.id)||0)}</td><td class="num">${labor.has(q.id)?money(labor.get(q.id)):'검토 필요'}</td><td><details><summary>${a?`${a.parallel.runs>1?a.parallel.runs+'열 · ':''}노무비 ×${Number(a.factor.toFixed(6))} / 재료 ×${a.materialFactor}`:'검토 필요'}</summary>${esc(a?.basis)}</details></td><td class="estimate-row-actions">${rowButtons(i)}</td></tr>`;}).join('')||'<tr><td colspan="11" class="muted">저장한 공종 없음</td></tr>'}
+      ${state.quantities.map((q,i)=>{const s=byId.get(q.standardId);let a;try{a=Surcharges.combined(s,q);}catch{}return `<tr><td>${esc(s?.name)}</td><td>${esc(s?.spec)}</td><td>${esc(s?.unit)}</td><td class="num">${money(q.length*q.count*(a?.parallel.quantityMultiplier??1))}${a?.parallel.runs>1?`<small>${a.parallel.runs}열 · 경로 ${money(q.length*q.count*(a.parallel.quantityMultiplier)/a.parallel.runs)}m</small>`:''}</td><td>${esc(q.materialName)||'—'}</td><td>${esc(q.materialSpec)||'—'}</td><td class="num">${q.materialPrice==null?'—':money(Number(q.materialPrice))}</td><td class="num">${money(materials.get(q.id)||0)}</td><td class="num">${labor.has(q.id)?money(labor.get(q.id)):'검토 필요'}</td><td><details><summary>${a?`${a.parallel.runs>1?a.parallel.runs+'열 · ':''}노무비 ×${Number(a.factor.toFixed(6))}${Object.entries(a.tradeFactors||{}).map(([k,v])=>` (${k} ×${Number(v.toFixed(6))})`).join('')} / 재료 ×${a.materialFactor}`:'검토 필요'}</summary>${esc(a?.basis)}</details></td><td class="estimate-row-actions">${rowButtons(i)}</td></tr>`;}).join('')||'<tr><td colspan="11" class="muted">저장한 공종 없음</td></tr>'}
       </tbody></table></div></section>
       ${Consumables.render(state,result)}
       <div class="estimate-expenses">${expenseSection('machine',expenseRows.filter(x=>x.row.kind==='machine'))}${expenseSection('other',expenseRows.filter(x=>x.row.kind==='other'))}</div>
