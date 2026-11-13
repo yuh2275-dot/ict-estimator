@@ -240,3 +240,35 @@ test('4-1-2-1~4-1-4, 4-1-6, 4-1-7 manual commentary follows the printed rates pe
   // 4-1-6, 4-1-7
   close(f(row('4-1-6',/95/),{b1n6:'c2'}),.8);close(f(row('4-1-7',/방수장치/),{b1n4:3}),2.6/3);
 });
+test('4-7 local cable commentary: per-row groups, trade-specific spare-pair cut-over and corrected rates',()=>{
+  const V=require('../src/standards-verified.js'),row=(code,re)=>V.find(s=>s.code===code&&re.test(s.spec));
+  const ids=s=>S.commentary(s).groups.map(g=>g.id),f=(s,c)=>S.commentaryFactors(s,{commentary:c}).factor;
+  // 4-7-1: 절 이름 "지중 및 가공케이블"이 아니라 규격으로 지중·가공 구분
+  const under=row('4-7-1',/^지중케이블 20P 이하 심선 0\.65/),aerial=row('4-7-1',/^가공케이블 50P/);
+  assert.equal(S.commentary(under).extracted,false);
+  assert.deepEqual(ids(under),['b1n3','b1n10','b1n11','b1n13','b1n14']);
+  assert.deepEqual(ids(aerial),['b1n3','b1n5','b1n6','b1n7','b1n8','b1n13','b1n14']);
+  close(f(under,{b1n10:'c2'}),1.15);close(f(under,{b1n10:'c1'}),1);close(f(under,{b1n11:'c1',b1n3:'c1'}),.75);
+  close(f(aerial,{b1n6:'c1',b1n7:'c1',b1n3:'c2'}),1.1*1.2*1.2);close(f(aerial,{b1n14:'c2'}),.9);
+  assert.throws(()=>f(aerial,{b1n8:'c1',b1n14:'c1'}),/함께 선택할 수 없습니다/);
+  // 4-7-3: 심선 0.5㎜ 110% 추가, T·Y와 X 분기 배타
+  const small=row('4-7-3',/^10P/);
+  close(f(small,{b1n10:'c3'}),1.1);close(f(small,{b1n10:'c1',b1n1:'c3'}),1.3*1.3);
+  assert.throws(()=>f(small,{b1n3:'c1',b1n11:'c1'}),/함께 선택할 수 없습니다/);
+  // 4-7-4-1: 예비심선 절체는 통신케이블공만 65%
+  const cut=row('4-7-4-1',/^국내-국외 2점간 0\.4/),outer=row('4-7-4-1',/^국외 2점간 0\.4/);
+  const a=S.combined(cut,{adjustment:'base',commentary:{b1n3:'c1',b1n5:'c2'}});
+  close(a.laborFactor,1.3);assert.deepEqual(a.tradeFactors,{통신케이블공:.65});
+  assert.ok(!ids(outer).includes('b1n3'));
+  const r=E.calculate(state(cut,{length:200,commentary:{b1n3:'c1'}}));assert.deepEqual(r.errors,[]);
+  close(r.labor[0].details.find(d=>d.trade==='통신케이블공').manDays,4.45*2*.65);close(r.labor[0].details.find(d=>d.trade==='보통인부').manDays,2.49*2);
+  close(f(row('4-7-4-2',/^국내-국외 2점간 0\.4/),{b1n8:'c1'}),.85);
+  // 4-7-5: 해체·재접속, 분기 수
+  const heat=row('4-7-5-1',/열수축관-32/),closure=row('4-7-5-3',/^80-500/);
+  assert.equal(S.commentaryFactors(heat,{commentary:{b1n2:'c1'}}).demolition,true);
+  assert.throws(()=>f(heat,{b1n2:'c1',b1n5:'c1'}),/함께 선택할 수 없습니다/);
+  close(f(closure,{b1n5:2,b1n3:'c1'}),1.6*1.2);close(f(closure,{b1n5:0,b1n9:'c1'}),.5);
+  assert.throws(()=>f(closure,{b1n5:1,b1n9:'c1'}),/함께 선택할 수 없습니다/);
+  // 4-7-6: 외피탈피 추가 1회마다 20%
+  close(f(row('4-7-6',/0\.65/),{b1n5:2,b1n3:'c1'}),1.4*1.5);
+});

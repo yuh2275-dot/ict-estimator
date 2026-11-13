@@ -14,7 +14,7 @@
 
 ```bash
 node restore-reference.cjs        # 원문 이미지(src/reference) 복원. 테스트·빌드 전에 1회
-node --test tests/*.test.cjs      # 전체 테스트 (현재 109개 통과)
+node --test tests/*.test.cjs      # 전체 테스트 (현재 110개 통과)
 node build.cjs                    # dist/ 생성 (index.html, src, vendor만 복사)
 node tools/extract_commentary.cjs # 원문 [해 설] → src/commentary-data.js 재생성 (직접 수정 금지)
 node tools/handoff-status.cjs origin/main HEAD  # 코드 변경에 HANDOFF 갱신이 포함됐는지 확인
