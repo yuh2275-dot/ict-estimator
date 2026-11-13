@@ -366,11 +366,12 @@
 <!-- AUTO-LOG:START -->
 ## 자동 기록 (머지할 때마다 GitHub Actions가 갱신, 직접 수정 금지)
 
-- 기준 커밋: `003fc95` (2026-11-13)
-- 테스트: 통과 108개 / 실패 0개
+- 기준 커밋: `1057ba7` (2026-11-13)
+- 테스트: 통과 109개 / 실패 0개
 
 | 날짜 | PR | 제목 | 머지 커밋 |
 |---|---|---|---|
+| 2026-11-13 | [#20](https://github.com/yuh2275-dot/ict-estimator/pull/20) | 광섬유 접속·성단·구내 광 등 4-1-x 해설 수작업 규칙 | `1057ba7` |
 | 2026-11-13 | [#19](https://github.com/yuh2275-dot/ict-estimator/pull/19) | 전선관·광케이블·동축·누설동축 해설 수작업 규칙 + 직종별 해설 계수 | `003fc95` |
 | 2026-11-13 | [#18](https://github.com/yuh2275-dot/ict-estimator/pull/18) | 4-6 전원케이블 공종 해설을 원문 대조 수작업 규칙으로 전환 | `2980d86` |
 | 2026-11-13 | [#17](https://github.com/yuh2275-dot/ict-estimator/pull/17) | PDF 단위 문자 표시 복원 및 오늘 작업 인계 정리 | `6bfd686` |
@@ -385,7 +386,6 @@
 | 2026-11-12 | [#8](https://github.com/yuh2275-dot/ict-estimator/pull/8) | 인계 문서(docs/HANDOFF.md) 자동 갱신 장치 | `804bbf7` |
 | 2026-11-12 | [#7](https://github.com/yuh2275-dot/ict-estimator/pull/7) | CLAUDE.md 추가 (AGENTS.md 자동 로드) | `707313a` |
 | 2026-11-12 | [#6](https://github.com/yuh2275-dot/ict-estimator/pull/6) | Codex 인계 문서 추가 (AGENTS.md, docs/HANDOFF.md) | `07761c3` |
-| 2026-11-11 | [#5](https://github.com/yuh2275-dot/ict-estimator/pull/5) | 공사원가계산 화면에서 원가계산서 미리보기 + 노임 등록 시 노무비 자동 계산 | `ef489b5` |
 
 위 기간에 바뀐 파일 (41개): `.claude/hooks/handoff-guard.cjs`, `.claude/settings.json`, `.github/workflows/handoff-check.yml`, `.github/workflows/handoff-log.yml`, `AGENTS.md`, `CLAUDE.md`, `README.md`, `SECURITY.md`, `docs/BASIS-IMPORT.md`, `docs/HANDOFF.md`, `index.html`, `src/app.js`, `src/basis-import.js`, `src/basis-ui.js`, `src/catalog-ui.js`, `src/commentary-data.js`, `src/consumables.js`, `src/design-xlsx.js`, `src/engine.js`, `src/estimate-ui.js`, `src/material-recipes.js`, `src/standards-verified.js`, `src/style.css`, `src/surcharges.js`, `src/takeoff.js`, `src/xlsx.js`, `tests/basis-import.test.cjs`, `tests/catalog.test.cjs`, `tests/commentary.test.cjs`, `tests/consumables.test.cjs`, `tests/design-xlsx.test.cjs`, `tests/engine.test.cjs`, `tests/materials.test.cjs`, `tests/standards-verified.test.cjs`, `tests/surcharges.test.cjs`, `tests/takeoff.test.cjs`, `tests/wage-period.test.cjs`, `tests/wages.test.cjs`, `tools/extract_commentary.cjs`, `tools/handoff-status.cjs` …
 <!-- AUTO-LOG:END -->
