@@ -1,6 +1,12 @@
 (function (root) {
   'use strict';
-  const data = root.standardCatalog;
+  // PDF 93쪽의 수식 전용 글꼴 문자를 표준 Unicode 단위로 복원한다.
+  // 원본 추출 데이터는 보존하고 검색·표시·등록에 쓰는 사본만 정규화한다.
+  const normalizeUnits = value => typeof value === 'string'
+    ? value.replace(/\uE0E7/g,'c').replace(/\uE0F1/g,'m').replace(/\uE035/g,'²')
+    : Array.isArray(value) ? value.map(normalizeUnits)
+    : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([k,v])=>[k,normalizeUnits(v)])) : value;
+  const data = normalizeUnits(root.standardCatalog);
   let host = null;
   let query = '';
   let chapter = '';
