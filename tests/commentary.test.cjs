@@ -196,7 +196,8 @@ test('3-1-1, 4-1-1, 4-2-1, 4-5-1 manual commentary shows only the conditions of 
   // 4-5-1: 구간별 체감, 규격, 2선 동시
   const leaky=row('4-5-1',/^포설$/),unpack=row('4-5-1',/포장해체/);
   assert.deepEqual(ids(unpack),[]);
-  close(f(leaky,{b1n2:300}),1);close(f(leaky,{b1n2:800}),(300+200*.8+300*.7)/800);close(f(leaky,{b1n2:4000}),(300+200*.8+500*.7+1000*.6+1000*.5+1000*.4)/4000);
+  // 사용자 결정(2026-11-13): 1가닥 연장이 속한 구간의 적용률 하나를 전체에 적용
+  for(const [n,x] of [[200,1],[300,1],[301,.8],[500,.8],[800,.7],[1000,.7],[1500,.6],[3000,.5],[4000,.4]])close(f(leaky,{b1n2:n}),x);
   close(f(leaky,{b1n5:'c1',b1n4:'c2'}),.8*.9);
 });
 test('trade-specific commentary factors reach the Excel unit-price formulas',async()=>{
