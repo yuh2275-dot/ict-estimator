@@ -91,6 +91,36 @@
       countGroup('b1n8','동시포설 열 수','해설 ⑧',{min:1,step:1,unit:'열',perUnit:true,factor:sequence,hint:'수량은 케이블 총길이(m)입니다. 2열 180% · 3열 260% · 4열 340%, 이후 1열당 80% 가산. 예: 경로 100m × 4열 → 수량 400m, 총길이 기준 계수 3.4÷4 = 0.85.'}),
       {id:'b1n9',name:'작업 구분',basis:'해설 ⑨',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 50%',.5),choice('c2','철거 (재사용) 90%',.9)]}
     ]},
+    // 4-6-1~4-6-3은 인쇄 95~97쪽(PDF 125~127) 이미지 대조. 자동 추출 id(b1nN·cN)를 유지하고, 빠진 선택지(② 직매, ⑥ 증설·이설, ⑮ 재활용 90%, 4-6-2 재배치 등)를 보완한다.
+    // excludes: 한 행에서 함께 선택하면 같은 작업을 두 번 반영하게 되는 조건. {그룹 id: true(어느 선택이든) | [선택 id…]}
+    '4-6-1':{page:95,notes:[
+      '② 전선관·랙·덕트·케이블트레이·Pit·공동구·새들 이용 포설 기준. 작업높이에 따른 할증은 공통 할증 "1-2-2-5 위험 할증률"에서 선택',
+      '③ 성단 품셈 별도 계상',
+      '⑨ 야간작업은 공통 할증 "1-2-2-6 야간작업"에서 선택',
+      '⑩ 10㎟ 이하 통신용 구내 전력케이블은 4-4-1 제어용 케이블 적용',
+      '⑫ 가요성 금속피 케이블의 앵커볼트 설치는 별도 계상',
+      '⑭ 신호수 등 안전 인력·안전시설은 1-1-27-1 안전시설 적용'
+    ],groups:()=>[
+      {id:'b1n1',name:'포박',basis:'해설 ①',choices:[none('포박 없음'),choice('c1','포박실 포박 148%',1.48),choice('c2','케이블타이 포박 110%',1.1)]},
+      {id:'b1n2',name:'포설 방식',basis:'해설 ②',choices:[none('전선관·랙·덕트·트레이·Pit·공동구·새들'),choice('c1','직매 80%',.8)]},
+      {id:'b1n4',name:'심수',basis:'해설 ④',choices:[none('단심 (기본)'),choice('c2','2심 140%',1.4),choice('c3','3심 200%',2),choice('c4','4심 260%',2.6),choice('c5','5심 320%',3.2),choice('c6','6심 380%',3.8),choice('c1','7심 440%',4.4)]},
+      {id:'b1n5',name:'8자 케이블',basis:'해설 ⑤',choices:[none('일반 케이블'),choice('c1','8자 케이블 포설 115%',1.15)]},
+      {id:'b1n6',name:'증설·이설',basis:'해설 ⑥',excludes:{b1n13:true,b1n15:true},choices:[none('신설'),choice('c1','증설 및 이설 150%',1.5)]},
+      {id:'b1n7',name:'케이블 외장',basis:'해설 ⑦',choices:[none('일반 외장'),choice('c1','동심중성선형 (CNCV) 110%',1.1),choice('c2','강대내장 케이블 150%',1.5)]},
+      {id:'b1n8',name:'전압',basis:'해설 ⑧',choices:[none('3.3㎸ 미만'),choice('c1','3.3~6.6㎸ 20% 가산 (120%)',1.2),choice('c2','22.9㎸ 이하 50% 가산 (150%)',1.5)]},
+      countGroup('b1n11','동시포설 열 수','해설 ⑪',{min:1,step:1,unit:'열',perUnit:true,factor:sequence,hint:'수량은 케이블 총길이(m)입니다. 2열 180% · 3열 260% · 4열 340%, 이후 1열당 80% 가산. 예: 경로 100m × 3열 → 수량 300m, 총길이 기준 계수 2.6÷3.'}),
+      {id:'b1n12',name:'금속피 여부',basis:'해설 ⑫',choices:[none('일반 외피'),choice('c1','가요성 금속피 (알루미늄·스틸) 150% (앵커볼트 별도)',1.5)]},
+      {id:'b1n13',name:'철거 케이블 다시 감기',basis:'해설 ⑬',demolition:true,excludes:{b1n15:true},choices:[none('해당 없음'),choice('c1','철거 케이블을 풀어서 다시 감기 (신설의 40%)',.4)]},
+      {id:'b1n15',name:'작업 구분',basis:'해설 ⑮',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 50%',.5),choice('c2','철거 (재활용, 드럼에 감기) 90%',.9)]}
+    ]},
+    '4-6-2':{page:96,notes:['① Y접속·T접속 등 절체에 따른 야간작업은 공통 할증 "1-2-2-6 야간작업"에서 선택'],groups:()=>[
+      {id:'b1n1',name:'접속 구분',basis:'해설 ①',excludes:{b1n2:true},choices:[none('신설 직선접속'),choice('c1','증설 및 이설 Y접속·T접속(절체) 150%',1.5)]},
+      {id:'b1n2',name:'작업 구분',basis:'해설 ②',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 50%',.5),choice('c2','철거 (재사용) 70%',.7),{...choice('c3','재배치 170%',1.7),demolition:false}]}
+    ]},
+    '4-6-3':{page:97,notes:['① 케이블 헤드를 포함한 단말처리 기준','③ 절체접속에 따른 야간작업은 공통 할증 "1-2-2-6 야간작업"에서 선택','④ 16㎟ 미만 단심 통신용 전력케이블 단말처리는 전력케이블 포설 품셈에 포함 (별도 계상하지 않음)'],groups:()=>[
+      {id:'b1n2',name:'단말 방식',basis:'해설 ②',choices:[none('케이블 헤드 포함 단말처리'),choice('c1','압착단자만 · 신설 30%',.3),choice('c2','압착단자만 · 살아있는 케이블 100%',1)]},
+      {id:'b1n3',name:'증설·이설',basis:'해설 ③',excludes:{b1n2:['c1']},choices:[none('신설'),choice('c1','증설 및 이설 Y접속(절체) 150%',1.5)]}
+    ]},
     '4-3-1':{page:90,notes:['① 몰딩 설치는 3-5-3 몰딩(Molding) 적용','④ 성단은 4-3-3 별도 계상','⑨ 철가 및 케이블 포설포박은 5-1-1 기초설치(공통) 적용','⑪ 신호수·안전시설은 1-1-27-1 안전시설 적용'],groups:t=>[
       /구내/.test(t)&&{id:'place',name:'설치 장소',basis:'해설 ①',choices:[none('관로 및 Pit (기본)'),choice('tray','벽잠핑·플로어덕트·케이블 트레이·랙 120%',1.2),choice('floor','바닥 노출 80%',.8)]},
       /(^|[^0-9])100P/.test(t)&&countGroup('pairs','UTP·STP·FTP 실제 대수 (P)','해설 ②',{min:100,step:100,unit:'P',factor:n=>{if(n%100)throw Error('대수는 100P 단위로 입력하세요.');return sequence(n/100);},hint:'200P 180% · 300P 260% · 400P 340% · 400P 초과는 100P당 80% 가산'}),
@@ -176,8 +206,14 @@
       if(raw==null||raw==='none')continue;
       const c=g.choices.find(c=>c.id===raw);
       if(!c)throw Error(`${g.name}: 허용되지 않은 선택입니다.`);
-      if(g.demolition)demolition=true;
+      if(c.demolition??g.demolition)demolition=true;
       applied.push({group:g.id,name:c.name,factor:c.factor,basis:g.basis});factor*=c.factor;
+    }
+    const chosen=id=>{const v=values[id];return v==null||v===''||v==='none'?null:v;};
+    for(const g of groups)for(const [other,ids] of Object.entries(g.excludes||{})){
+      const o=groups.find(x=>x.id===other);
+      if(!o||chosen(g.id)==null||chosen(other)==null||(ids!==true&&!ids.includes(chosen(other))))continue;
+      throw Error(`"${g.name}"과(와) "${o.name}" 조건은 같은 작업을 두 번 반영하므로 함께 선택할 수 없습니다. 행을 나누세요.`);
     }
     return {factor,applied,demolition};
   }
