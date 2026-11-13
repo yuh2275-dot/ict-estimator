@@ -229,6 +229,84 @@
       /방수장치/.test(t)&&countGroup('b1n4','동일 장소 설치 수','해설 ④',{min:1,step:1,unit:'개',perUnit:true,factor:sequence,hint:'수량은 전체 개수입니다. 동일 장소에 1개 추가마다 80% 가산(2개 180%, 3개 260%).'}),
       {id:'b1n5',name:'작업 구분',basis:'해설 ⑤',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 50%',.5),choice('c2','철거 (재사용) 80%',.8)]}
     ]},
+    // 4-7 시내케이블: 원문 이미지 PDF 128~134쪽(인쇄 98~104쪽) 대조.
+    '4-7-1':{page:98,notes:[
+      '① 터파기·되메우기·관로·트로프 설치 별도 · ② 관로 선통·소운반 포함 · ④ 가공은 조가선 제외, 행거 불포함',
+      '⑨ 가공 포설 지상 24m 이상은 통신케이블공 → 송전전공, 보통인부 → 통신케이블공으로, 활선 근접작업은 통신케이블공 → 송전활선전공으로 직종을 바꿔 적용 (노임 직종 변경, 별도 행 권장)',
+      '⑫ 스파이럴슬리브 설치는 1m 기준 보통인부 0.07인(인공·동도·통신구·국내) / 0.06인(가공), 1m 초과는 1m당 35% 가산 — 별도 행으로 계상'
+    ],groups:t=>{
+      const aerial=/가공케이블 \d/.test(t),under=/지중케이블 \d/.test(t); // 절 이름 "지중 및 가공케이블"이 아니라 규격의 구분으로 판정
+      return [
+      {id:'b1n3',name:'케이블 종류',basis:'해설 ③',choices:[none('일반 케이블'),choice('c2','강대 및 자기지지형 케이블 120%',1.2),choice('c1','차폐케이블 (차폐계수 50% 이하) 150%',1.5)]},
+      aerial&&{id:'b1n5',name:'처짐 조정',basis:'해설 ⑤',excludes:{b1n8:true,b1n13:true,b1n14:true},choices:[none('해당 없음'),choice('c1','기설 가공케이블 처짐(정도) 조정 · 신설의 20%',.2)]},
+      aerial&&{id:'b1n6',name:'라싱와이어',basis:'해설 ⑥',choices:[none('해당 없음'),choice('c1','수목전지 라싱와이어 정리 110%',1.1)]},
+      aerial&&{id:'b1n7',name:'기설선 상위시설',basis:'해설 ⑦',choices:[none('해당 없음'),choice('c1','기설선 상위시설 120%',1.2)]},
+      aerial&&{id:'b1n8',name:'가공 이설',basis:'해설 ⑧',excludes:{b1n13:true,b1n14:true},choices:[none('신설'),choice('c1','가공케이블 이설 · 신설의 70%',.7)]},
+      under&&{id:'b1n10',name:'통신구·동도',basis:'해설 ⑩',choices:[none('일반 관로'),choice('c2','통신구·동도내 포설 115%',1.15),choice('c1','통신구 신설 후 기존케이블 사용물품 철거·케이블 정리 100%',1)]},
+      /지중케이블 20P 이하 심선 0\.65/.test(t)&&{id:'b1n11',name:'지중차폐선',basis:'해설 ⑪',choices:[none('일반 케이블'),choice('c1','지중차폐선 포설 · 0.65㎜-20P 이하 품의 50%',.5)]},
+      {id:'b1n13',name:'철거 케이블 다시 감기',basis:'해설 ⑬',demolition:true,excludes:{b1n14:true},choices:[none('해당 없음'),choice('c1','철거 케이블을 풀어서 다시 감기 (신설의 40%)',.4)]},
+      {id:'b1n14',name:'작업 구분',basis:'해설 ⑭',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 50%',.5),choice('c2','철거 (재활용, 드럼에 감기) 90%',.9)]}
+    ];}},
+    '4-7-2-1':{page:99,notes:['① 이종심선 접속은 굵은 심선 품셈 적용 · ⑤ 최종시험 제외','④ 간이시험(대조·절연·타혼·혼선)은 10회선당 통신케이블공 0.03인을 별도 행으로 가산','⑦ 회선수는 심선접속 회선수 총합을 100회선 단위로 적산(소수점 포함) · ⑧ 1·5회선용 심선슬리이브 접속, ⑩ CCP케이블 단말처리도 본 품셈'],groups:()=>[
+      {id:'b1n2',name:'분기접속',basis:'해설 ②',choices:[none('직선접속'),choice('c2','T·Y 분기접속 130%',1.3),choice('c1','X 분기접속 140%',1.4)]},
+      {id:'b1n3',name:'납땜접속',basis:'해설 ③',choices:[none('일반'),choice('c1','심선납땜접속 150%',1.5)]},
+      {id:'b1n6',name:'가공',basis:'해설 ⑥',choices:[none('지중·옥내'),choice('c1','가공케이블 접속 120%',1.2)]},
+      {id:'b1n9',name:'젤리충진',basis:'해설 ⑨',choices:[none('일반 케이블'),choice('c1','젤리충진케이블 심선접속 150%',1.5)]}
+    ]},
+    '4-7-2-2':{page:99,notes:['① 이종심선 접속은 굵은 심선 품셈 적용 · ③ 접속상태 확인 시험 포함(최종시험 제외)','⑤ 회선수는 100회선 단위로 적산(소수점 포함)'],groups:()=>[
+      {id:'b1n2',name:'분기접속',basis:'해설 ②',choices:[none('직선접속'),choice('c2','T·Y 분기접속 130%',1.3),choice('c1','X 분기접속 140%',1.4)]},
+      {id:'b1n4',name:'가공',basis:'해설 ④',choices:[none('지중·옥내'),choice('c1','가공케이블 접속 120%',1.2)]},
+      {id:'b1n6',name:'젤리충진',basis:'해설 ⑥',choices:[none('일반 케이블'),choice('c1','젤리충진케이블 심선접속 150%',1.5)]}
+    ]},
+    '4-7-3':{page:100,notes:['② 이종심선 접속은 굵은 심선 품셈 적용 · ⑦ 최종시험 제외','⑥ 간이시험(대조·절연·타혼·혼선)은 1회선당 통신케이블공 0.003인을 별도 행으로 가산'],groups:()=>[
+      {id:'b1n1',name:'케이블 종류',basis:'해설 ①',choices:[none('일반 케이블'),choice('c2','스탈페스·웰만텔 및 외장케이블 120%',1.2),choice('c4','내압케이블 120%',1.2),choice('c3','SS형 130%',1.3),choice('c5','차폐케이블 (차폐계수 50% 이하) 150%',1.5),choice('c1','젤리충진케이블 150%',1.5)]},
+      {id:'b1n3',name:'T·Y 분기',basis:'해설 ③',excludes:{b1n11:true},choices:[none('직선접속'),choice('c1','분기접속 (T·Y분기) 130%',1.3)]},
+      {id:'b1n11',name:'X 분기',basis:'해설 ⑪',choices:[none('해당 없음'),choice('c1','X분기접속 140%',1.4)]},
+      {id:'b1n4',name:'납땜접속',basis:'해설 ④',choices:[none('일반'),choice('c1','심선납땜접속 150%',1.5)]},
+      {id:'b1n5',name:'PVC·PE 케이블',basis:'해설 ⑤',choices:[none('해당 없음'),choice('c1','PVC 및 PE Cable 접속 80%',.8)]},
+      {id:'b1n8',name:'열수축관',basis:'해설 ⑧',choices:[none('해당 없음'),choice('c2','열수축관 사용 80%',.8),choice('c1','보조연관열수축관 사용 100%',1)]},
+      {id:'b1n9',name:'가공',basis:'해설 ⑨',choices:[none('지중·옥내'),choice('c1','가공케이블 접속 120%',1.2)]},
+      {id:'b1n10',name:'심선 굵기',basis:'해설 ⑩',choices:[none('0.4㎜ (기준)'),choice('c3','0.5㎜ 110%',1.1),choice('c2','0.65㎜ 120%',1.2),choice('c1','0.9㎜ 130%',1.3)]}
+    ]},
+    '4-7-4-1':{page:100,notes:['① 꼬임접속에 의한 절체 기준 · ② 심선대조·구선대조 포함 · ④ 간이시험 포함 · ⑥ 커넥터 접속점의 멀티접속·해체 포함','⑧ 회선수는 100회선 단위로 적산(소수점 포함) · ⑫ 케이블 성단은 4-3-3 적용'],groups:t=>{
+      const inOut=/국내-국외/.test(t);
+      return [
+      inOut&&{id:'b1n3',name:'예비심선 절체',basis:'해설 ③',choices:[none('일반 절체 (국내점퍼선 절체 포함)'),{...choice('c1','예비심선 절체 · 통신케이블공 65%, 보통인부 100%',1),trades:{통신케이블공:.65}}]},
+      {id:'b1n5',name:'분기접속 (꼬임접속)',basis:'해설 ⑤',choices:[none('직선접속'),choice('c2','T·Y 분기접속 130%',1.3),choice('c1','X 분기접속 140%',1.4)]},
+      {id:'b1n7',name:'멀티 해체',basis:'해설 ⑦',choices:[none('해당 없음'),choice('c1','꼬임접속의 멀티 해체 70%',.7)]},
+      {id:'b1n9',name:'납땜접속 (꼬임접속)',basis:'해설 ⑨ → 4-7-2-1 ③',choices:[none('일반'),choice('c1','심선납땜 접속 150%',1.5)]},
+      {id:'b1n10',name:'가공',basis:'해설 ⑩',choices:[none('지중·옥내'),choice('c1','가공케이블 절체접속 120%',1.2)]},
+      {id:'b1n11',name:'젤리충진',basis:'해설 ⑪',choices:[none('일반 케이블'),choice('c1','젤리충진케이블 심선접속 150%',1.5)]}
+    ];}},
+    '4-7-4-2':{page:101,notes:['① 이종심선 접속은 굵은 심선 품셈 적용 · ② 심선대조·구선대조 포함 · ④ 멀티접속·해체 포함','⑥ 회선수는 100회선 단위로 적산(소수점 포함) · ⑨ 케이블 성단은 4-3-3 적용'],groups:t=>{
+      const inOut=/국내-국외/.test(t);
+      return [
+      inOut&&{id:'b1n3',name:'예비심선 절체',basis:'해설 ③',choices:[none('일반 절체 (국내점퍼선 절체 포함)'),{...choice('c1','예비심선 절체 · 통신케이블공 65%, 보통인부 100%',1),trades:{통신케이블공:.65}}]},
+      {id:'b1n5',name:'가공',basis:'해설 ⑤',choices:[none('지중·옥내'),choice('c1','가공케이블 절체접속 120%',1.2)]},
+      {id:'b1n7',name:'젤리충진',basis:'해설 ⑦',choices:[none('일반 케이블'),choice('c1','젤리충진케이블 심선접속 150%',1.5)]},
+      inOut&&{id:'b1n8',name:'방식변경·MDF 소형화',basis:'해설 ⑧',choices:[none('해당 없음'),choice('c1','선번 변경 없는 방식변경·MDF 소형화 85%',.85)]}
+    ];}},
+    '4-7-5-1':{page:102,notes:['③ 인·수공내 케이블명·선번 기입(표찰 포함)은 케이블 1조당 통신케이블공 0.06인 별도 행 · ④ 본드선 부착 포함','⑥ 열수축관 공기 차단격벽·접속점 보호용 격벽은 통신케이블공·보통인부 각 0.02인 별도 행'],groups:()=>[
+      {id:'b1n1',name:'가공',basis:'해설 ①',choices:[none('지중·옥내'),choice('c1','가공케이블 시공 120%',1.2)]},
+      {id:'b1n2',name:'해체',basis:'해설 ②',demolition:true,excludes:{b1n5:true},choices:[none('신설'),choice('c1','해체 70%',.7)]},
+      {id:'b1n5',name:'X-(R) 재접속',basis:'해설 ⑤',choices:[none('해당 없음'),choice('c1','X-(R) 재접속 50%',.5)]},
+      {id:'b1n7',name:'차폐케이블',basis:'해설 ⑦',choices:[none('일반 케이블'),choice('c1','차폐케이블 120%',1.2)]}
+    ]},
+    '4-7-5-2':{page:102,notes:['② 씨링콤파운드(젤리형 포함) 주입 시 통신케이블공·보통인부 각 0.02인 별도 행 가산 · ③ 본드선 부착 포함'],groups:()=>[
+      {id:'b1n1',name:'가공',basis:'해설 ①',choices:[none('지중·옥내'),choice('c1','가공케이블 시공 120%',1.2)]},
+      {id:'b1n4',name:'차폐케이블',basis:'해설 ④',choices:[none('일반 케이블'),choice('c1','차폐케이블 120%',1.2)]}
+    ]},
+    '4-7-5-3':{page:103,notes:['① ST·WT·F/S-LAP 외장케이블 신설 기준 · ⑥ 본드선 부착 포함','⑦ 인·수공내 케이블명·선번 기입은 케이블 1조당 통신케이블공 0.06인 별도 행 · ⑧ 공기차단·접속점 보호용 격벽은 각 0.02인 별도 행'],groups:()=>[
+      {id:'b1n2',name:'차폐케이블',basis:'해설 ②',choices:[none('일반 케이블'),choice('c1','차폐케이블 120%',1.2)]},
+      {id:'b1n3',name:'가공',basis:'해설 ③',choices:[none('지중·옥내'),choice('c1','가공케이블 시공 120%',1.2)]},
+      {id:'b1n4',name:'해체 후 재접속',basis:'해설 ④',choices:[none('신설'),choice('c1','해체 후 재접속 70%',.7)]},
+      countGroup('b1n5','분기 수','해설 ⑤',{min:0,step:1,unit:'분기',factor:n=>1+.3*n,hint:'분기마다 30% 가산합니다(1분기 130%, 2분기 160%).'}),
+      {id:'b1n9',name:'작업 구분',basis:'해설 ⑨',demolition:true,excludes:{b1n4:true,b1n5:true},choices:[none('신설'),choice('c1','철거 50%',.5)]}
+    ]},
+    '4-7-6':{page:104,notes:['① 외부케이블 직접성단 기준, 심선 배선·포박·랩핑 또는 IDC 성단 포함 · ② 피뢰탄기반 설치는 3-3-2 배선반 적용','④ 100P 이하도 본 품 적용'],groups:()=>[
+      {id:'b1n3',name:'젤리충진',basis:'해설 ③',choices:[none('일반 케이블'),choice('c1','젤리충진 케이블 150%',1.5)]},
+      countGroup('b1n5','외피탈피 추가 횟수','해설 ⑤',{min:0,step:1,unit:'회',factor:n=>1+.2*n,hint:'케이블 조당 외피탈피 1회 기준입니다. 추가 1회마다 20% 가산(1회 추가 120%).'})
+    ]},
     '4-2-1':{page:88,notes:[
       '① 터파기·되메우기·관로설치·트로프 설치는 별도',
       '③ PE 내관·견인선 포설은 4-1-1 적용',
