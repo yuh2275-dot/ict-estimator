@@ -292,11 +292,12 @@
 <!-- AUTO-LOG:START -->
 ## 자동 기록 (머지할 때마다 GitHub Actions가 갱신, 직접 수정 금지)
 
-- 기준 커밋: `6bfd686` (2026-11-13)
-- 테스트: 통과 105개 / 실패 0개
+- 기준 커밋: `2980d86` (2026-11-13)
+- 테스트: 통과 106개 / 실패 0개
 
 | 날짜 | PR | 제목 | 머지 커밋 |
 |---|---|---|---|
+| 2026-11-13 | [#18](https://github.com/yuh2275-dot/ict-estimator/pull/18) | 4-6 전원케이블 공종 해설을 원문 대조 수작업 규칙으로 전환 | `2980d86` |
 | 2026-11-13 | [#17](https://github.com/yuh2275-dot/ict-estimator/pull/17) | PDF 단위 문자 표시 복원 및 오늘 작업 인계 정리 | `6bfd686` |
 | 2026-11-13 | [#16](https://github.com/yuh2275-dot/ict-estimator/pull/16) | 캡처로 노임·제비율·자재단가 가져오기 및 산정 보강 | `2ea5ba7` |
 | 2026-11-12 | [#15](https://github.com/yuh2275-dot/ict-estimator/pull/15) | AGENTS.md: 작업 시작 전 인계 문서 확인 규칙 추가 | `a891bbd` |
@@ -311,7 +312,6 @@
 | 2026-11-12 | [#6](https://github.com/yuh2275-dot/ict-estimator/pull/6) | Codex 인계 문서 추가 (AGENTS.md, docs/HANDOFF.md) | `07761c3` |
 | 2026-11-11 | [#5](https://github.com/yuh2275-dot/ict-estimator/pull/5) | 공사원가계산 화면에서 원가계산서 미리보기 + 노임 등록 시 노무비 자동 계산 | `ef489b5` |
 | 2026-11-11 | [#4](https://github.com/yuh2275-dot/ict-estimator/pull/4) | 원가계산서를 예시 양식에 맞게 정리 | `de4a885` |
-| 2026-11-11 | [#3](https://github.com/yuh2275-dot/ict-estimator/pull/3) | 엑셀 저장을 설계내역서 통합문서(8개 시트, 수식 연결)로 변경 | `f0c46c3` |
 
-위 기간에 바뀐 파일 (43개): `.claude/hooks/handoff-guard.cjs`, `.claude/settings.json`, `.github/workflows/handoff-check.yml`, `.github/workflows/handoff-log.yml`, `AGENTS.md`, `CLAUDE.md`, `README.md`, `SECURITY.md`, `docs/BASIS-IMPORT.md`, `docs/HANDOFF.md`, `index.html`, `src/app.js`, `src/basis-import.js`, `src/basis-ui.js`, `src/catalog-ui.js`, `src/commentary-data.js`, `src/consumables.js`, `src/design-xlsx.js`, `src/engine.js`, `src/estimate-ui.js`, `src/material-recipes.js`, `src/standards-verified.js`, `src/style.css`, `src/surcharges.js`, `src/takeoff.js`, `src/xlsx.js`, `tests/basis-import.test.cjs`, `tests/catalog.test.cjs`, `tests/commentary.test.cjs`, `tests/consumables.test.cjs`, `tests/design-xlsx.test.cjs`, `tests/engine.test.cjs`, `tests/excel.test.cjs`, `tests/fixtures-design-state.cjs`, `tests/materials.test.cjs`, `tests/standards-verified.test.cjs`, `tests/surcharges.test.cjs`, `tests/takeoff.test.cjs`, `tests/wage-period.test.cjs`, `tests/wages.test.cjs` …
+위 기간에 바뀐 파일 (41개): `.claude/hooks/handoff-guard.cjs`, `.claude/settings.json`, `.github/workflows/handoff-check.yml`, `.github/workflows/handoff-log.yml`, `AGENTS.md`, `CLAUDE.md`, `README.md`, `SECURITY.md`, `docs/BASIS-IMPORT.md`, `docs/HANDOFF.md`, `index.html`, `src/app.js`, `src/basis-import.js`, `src/basis-ui.js`, `src/catalog-ui.js`, `src/commentary-data.js`, `src/consumables.js`, `src/design-xlsx.js`, `src/engine.js`, `src/estimate-ui.js`, `src/material-recipes.js`, `src/standards-verified.js`, `src/style.css`, `src/surcharges.js`, `src/takeoff.js`, `src/xlsx.js`, `tests/basis-import.test.cjs`, `tests/catalog.test.cjs`, `tests/commentary.test.cjs`, `tests/consumables.test.cjs`, `tests/design-xlsx.test.cjs`, `tests/engine.test.cjs`, `tests/materials.test.cjs`, `tests/standards-verified.test.cjs`, `tests/surcharges.test.cjs`, `tests/takeoff.test.cjs`, `tests/wage-period.test.cjs`, `tests/wages.test.cjs`, `tools/extract_commentary.cjs`, `tools/handoff-status.cjs` …
 <!-- AUTO-LOG:END -->
