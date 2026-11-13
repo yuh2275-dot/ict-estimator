@@ -133,3 +133,31 @@ test('custom multiplier warns when it repeats a selected commentary condition or
   assert.deepEqual(S.customWarnings(outlet,{adjustment:'base',commentary:{ports:6}}),[]);
 });
 
+test('4-6-1~4-6-3 manually verified commentary keeps saved ids and adds missing printed choices',()=>{
+  const V=require('../src/standards-verified.js'),by=code=>V.find(s=>s.code===code);
+  const cable=by('4-6-1'),joint=by('4-6-2'),head=by('4-6-3');
+  const info=S.commentary(cable);assert.equal(info.extracted,false);assert.equal(info.page,95);
+  assert.deepEqual(info.groups.map(g=>g.id),['b1n1','b1n2','b1n4','b1n5','b1n6','b1n7','b1n8','b1n11','b1n12','b1n13','b1n15']);
+  // ④ 심수: 이전 자동 추출 id(c1=7심 … c6=6심)를 그대로 해석한다.
+  for(const [id,f] of [['c2',1.4],['c3',2],['c4',2.6],['c5',3.2],['c6',3.8],['c1',4.4]])close(S.commentaryFactors(cable,{commentary:{b1n4:id}}).factor,f);
+  close(S.commentaryFactors(cable,{commentary:{b1n2:'c1'}}).factor,.8);                       // ② 직매
+  close(S.commentaryFactors(cable,{commentary:{b1n11:3}}).factor,2.6/3);                      // ⑪ 총길이 기준
+  const row={commentary:{b1n1:'c2',b1n4:'c3',b1n8:'c1'}};close(S.commentaryFactors(cable,row).factor,1.1*2*1.2);
+  const s=state(cable,{...row,length:100,materialPrice:100});const r=E.calculate(s);
+  assert.deepEqual(r.errors,[]);close(r.labor[0].details[0].manDays,cable.labor[0].base*100/10*1.1*2*1.2);
+  assert.equal(S.commentaryFactors(cable,{commentary:{b1n15:'c2'}}).factor,.9);              // ⑮ 재활용 90%
+  assert.equal(S.commentaryFactors(cable,{commentary:{b1n13:'c1'}}).demolition,true);
+  assert.throws(()=>S.commentaryFactors(cable,{commentary:{b1n13:'c1',b1n15:'c1'}}),/함께 선택할 수 없습니다/);
+  assert.throws(()=>S.commentaryFactors(cable,{commentary:{b1n6:'c1',b1n15:'c2'}}),/함께 선택할 수 없습니다/);
+  assert.throws(()=>S.combined(cable,{adjustment:'base',materialPrice:1,commentary:{b1n15:'c1'}}),/철거/);
+  // 4-6-2: ① 증설·이설 150%, ② 재배치 170%는 철거가 아니다.
+  assert.deepEqual(S.commentary(joint).groups.map(g=>g.id),['b1n1','b1n2']);
+  close(S.commentaryFactors(joint,{commentary:{b1n1:'c1'}}).factor,1.5);
+  const relocate=S.commentaryFactors(joint,{commentary:{b1n2:'c3'}});close(relocate.factor,1.7);assert.equal(relocate.demolition,false);
+  assert.equal(S.commentaryFactors(joint,{commentary:{b1n2:'c2'}}).demolition,true);
+  assert.throws(()=>S.commentaryFactors(joint,{commentary:{b1n1:'c1',b1n2:'c3'}}),/함께 선택할 수 없습니다/);
+  // 4-6-3: ② 압착단자 30%는 신설에 한함, ③ 증설·이설 150%
+  close(S.commentaryFactors(head,{commentary:{b1n2:'c1'}}).factor,.3);
+  close(S.commentaryFactors(head,{commentary:{b1n2:'c2',b1n3:'c1'}}).factor,1.5);
+  assert.throws(()=>S.commentaryFactors(head,{commentary:{b1n2:'c1',b1n3:'c1'}}),/함께 선택할 수 없습니다/);
+});
