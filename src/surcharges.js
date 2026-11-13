@@ -164,6 +164,71 @@
       cable&&{id:'b1n25',name:'철거 케이블 다시 감기',basis:'해설 ㉕',demolition:true,excludes:{b1n26:true},choices:[none('해당 없음'),choice('c1','철거 케이블을 풀어서 다시 감기 (신설의 40%)',.4)]},
       cable&&{id:'b1n26',name:'작업 구분',basis:'해설 ㉖',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 50%',.5),choice('c2','철거 (재활용, 드럼에 감기) 90%',.9)]}
     ];}},
+    // 4-1-2-1~4-1-4, 4-1-6, 4-1-7: 원문 이미지 PDF 111~115·117쪽(인쇄 81~85·87쪽) 대조.
+    '4-1-2-1':{page:81,notes:[
+      '① 융착접속 기준 · ⑤ 코어접속에는 중심지지선·금속심선 접속, 본드선 부착 포함 · ⑮ 접속 규격은 작업개소당 적용',
+      '② 절체접속에는 코어대조 포함. 절체접속 시 시험(접속 전·후, 최종)은 해당 시험 품셈 별도 계상',
+      '③ 광접속함체 공정은 외피 탈피·함체내 고정·정리·결합·표찰 포함. 함체 내 접속은 일반접속 품셈 별도 계상',
+      '⑧ 광대역폭 측정은 MMF, ⑨ 편광모드분산측정은 10G 이상(색분산 측정 포함), ⑪ 반사손실 측정은 FTTH-PON인 경우 적용',
+      '⑩ 광섬유케이블 식별은 이용중인 케이블 2조 이상 수용된 인공·전봇대의 분기접속·재접속, 대·개체, 철거 식별작업에 적용',
+      '⑬ 안전시설은 1-1-27-1, 위험 할증은 공통 할증 1-2-2-5에서 선택 · ⑭ 해킹방지(IB) 광케이블도 본 품셈 적용'
+    ],groups:t=>{
+      const closure=/광접속함체/.test(t);
+      return [
+      closure&&{id:'b1n4',name:'광접속함체 작업',basis:'해설 ④',choices:[none('신설'),choice('c1','분기 1개 추가 130% (분기 2개 이상은 분기 수 입력)',1.3),choice('c2','기존 광접속함체 해체·조립 70%',.7)]},
+      closure&&countGroup('branches','분기 추가 수','해설 ④',{min:0,step:1,unit:'분기',excludes:{b1n4:['c1']},factor:n=>1+.3*n,hint:'분기마다 광접속함체 품의 30%를 가산합니다(1분기 130%, 2분기 160%). 해체·조립 70%와 함께 고르면 곱해서 적용합니다.'}),
+      {id:'b1n6',name:'가공 작업',basis:'해설 ⑥',choices:[none('지중·옥내'),choice('c1','가공작업 120%',1.2)]},
+      /일반접속/.test(t)&&{id:'b1n12',name:'함체 없는 분기접속',basis:'해설 ⑫',choices:[none('일반'),choice('c1','광접속함체가 없는 케이블 분기접속 · 일반접속 품의 49% 가산 (149%)',1.49)]},
+      closure&&{id:'b1n16',name:'작업 구분',basis:'해설 ⑯',demolition:true,excludes:{b1n4:true,branches:true},choices:[none('신설'),choice('c1','광접속함체 철거 (불용) 30%',.3),choice('c2','광접속함체 철거 (재사용) 80%',.8)]}
+    ];}},
+    '4-1-2-2':{page:82,notes:[
+      '② 국내성단 규격은 작업개소당 적용, 성단접속 품량 포함',
+      '④ FDF 신설은 바닥 고정물·도어 조립 포함. 미니 FDF 또는 랙·단자함 내 광분배반은 "광분배함(OFD) 및 저장함 설치" 품셈 적용',
+      '⑤ 광분배함(반)·광단자함에 케이블 수용은 국내성단 품셈 적용 · ⑧ 현장조립 광커넥터 성단도 국내성단 품셈',
+      '⑦ OTP 선번 스티커 부착 포함. 기설 광단자함 선번기입은 개당 통신설비공·보통인부 각 0.03인을 별도 행으로 가산',
+      '⑩ 안전시설은 1-1-27-1, 위험 할증은 공통 할증 1-2-2-5에서 선택'
+    ],groups:t=>{
+      const ofd=/광분배함\(OFD\)/.test(t),box=ofd||/광분배반|광단자함/.test(t),otp=/광단자함/.test(t);
+      return [
+      ofd&&{id:'b1n1',name:'저장함 설치',basis:'해설 ①',choices:[none('신설'),choice('c1','기존 광분배함(반)에 저장함 설치 30%',.3)]},
+      box&&countGroup('b1n3','동일 장소 설치 수','해설 ③',{min:1,step:1,unit:'개',perUnit:true,factor:sequence,hint:'수량은 전체 개수입니다. 2개 180%, 3개 260%, 이후 1개당 80% 가산(원문 "3개 초과 1개당 80% 가산"을 2개 180%에 이어지는 수열로 해석).'}),
+      otp&&{id:'b1n6',name:'설치 위치',basis:'해설 ⑥',choices:[none('전봇대 설치 (기준)'),choice('c1','옥내 설치 80%',.8),choice('c2','IJP Box 함체내부 설치 80%',.8)]},
+      otp&&countGroup('ijpBranches','IJP Box 분기 수','해설 ⑥',{min:0,step:1,unit:'분기',factor:n=>1+.3*n,hint:'IJP Box(광단자함 품셈 적용)는 분기마다 30%를 가산합니다.'}),
+      /광분배기/.test(t)&&countGroup('b1n9','광분배기 분배 수','해설 ⑨',{min:1,step:1,unit:'분배',factor:n=>n<=4?1:n<=8?1.6:1.6+.6*Math.ceil((n-8)/4),hint:'4분배 이하 100%, 8분배 160%, 8분배 초과는 4분배 추가당 60% 가산(16분배 280%, 32분배 520%).'}),
+      {id:'b1n11',name:'작업 구분',basis:'해설 ⑪',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 50%',.5),choice('c2','철거 (재사용) 80%',.8)]}
+    ];}},
+    '4-1-3':{page:83,notes:[
+      '⑥ 광튜브 포설에는 튜브절단·커넥터 설치·여장처리 포함 · ⑦ 덕트뚜껑 열기·닫기는 3-5-2 적용',
+      '⑧ 성단은 피그테일 접속·광어댑터 설치·여장정리·식별표시 포함 · ⑨ 최종시험·반사손실은 양방향 기준',
+      '⑩ 광분배함(반)·광단자함은 4-1-2-2, ⑫ 접속은 4-1-2-1 일반접속 적용 · ⑪ 기계경비는 1-4 기준',
+      '⑮ 광점퍼코드 포설은 세대단자함~거실 구간 등에 적용 · ⑰ 해킹방지(IB) 광케이블도 본 품셈 적용'
+    ],groups:t=>{
+      const cable=/광섬유케이블 포설/.test(t),termTest=/성\s*단|시험/.test(t),lay=/포설/.test(t);
+      return [
+      (cable||termTest)&&{id:'b1n1',name:'건축물 구분',basis:'해설 ①',choices:[none('신축 건축물 (기준)'),cable?choice('c1','기축·리모델링 건축물 · 광섬유케이블 포설 200%',2):choice('c1','기축·리모델링 건축물 · 성단·시험 130%',1.3)]},
+      /24코어/.test(t)&&{id:'b1n2',name:'코어 수',basis:'해설 ②',choices:[none('24코어 이하'),choice('c2','36코어 · 24코어 포설품의 120%',1.2),choice('c1','48코어 · 24코어 포설품의 150%',1.5)]},
+      cable&&{id:'b1n3',name:'인장선',basis:'해설 ③',choices:[none('일반'),choice('c1','강대 없음·아라미드 인장선 50%',.5)]},
+      cable&&{id:'b1n4',name:'8자 케이블',basis:'해설 ④',excludes:{b1n3:true},choices:[none('일반'),choice('c1','8자 케이블 포설 115% (아라미드 제외)',1.15)]},
+      /공압포설/.test(t)&&{id:'b1n5',name:'공압포설 방향',basis:'해설 ⑤',choices:[none('단일방향 (기준)'),choice('c2','양방향 포설 119%',1.19),choice('c1','연속포설 137%',1.37)]},
+      /슬림형/.test(t)&&countGroup('b1n13','슬림형 내관 조 수','해설 ⑬',{min:1,step:1,unit:'조',factor:n=>1+.8*(n-1),hint:'1조 기준이며 2조부터 1조 추가당 80% 가산합니다(2조 180%, 3조 260%). 수량은 경로길이(m)입니다.'}),
+      (cable||/광튜브 포설|슬림형/.test(t))&&{id:'b1n14',name:'포설 장소',basis:'해설 ⑭',choices:[none('전선관·합성수지 주름관 등'),choice('c1','액세스플로어·케이블랙·트레이·플로어덕트·금속덕트·레이스웨이 120%',1.2)]},
+      cable&&{id:'b1n16',name:'자기지지형',basis:'해설 ⑯',choices:[none('일반'),choice('c1','기축 건축물 외벽 자기지지형 120%',1.2)]},
+      cable&&{id:'b1n18',name:'금속피 여부',basis:'해설 ⑱',choices:[none('일반 외피'),choice('c1','가요성 금속피 (알루미늄·스틸) 150% (앵커볼트 별도)',1.5)]},
+      lay&&{id:'b1n19',name:'작업 구분',basis:'해설 ⑲',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 50%',.5),choice('c2','철거 (재활용, 드럼에 감기) 90%',.9)]}
+    ];}},
+    '4-1-4':{page:84,notes:['① 자재운반·포설·고정 포함 · ③ 접속·성단은 별도 계상','④ 교량·터널·지상 공동관로(트로프) 내 포설은 지중포설 품셈 적용','⑤ 가요성 금속피 광전복합케이블도 본 품셈 적용 (할증 없음)'],groups:t=>[
+      {id:'b1n2',name:'8자 포설',basis:'해설 ②',choices:[none('일반'),{...choice('c1','8자포설 · 보통인부에 한하여 15% 가산',1.15),trades:{보통인부:1.15}}]},
+      /지중/.test(t)&&{id:'b1n4',name:'통신구·동도',basis:'해설 ④',choices:[none('일반 관로·트로프'),choice('c1','통신구·동도내 포설 115%',1.15)]},
+      {id:'b1n6',name:'철거 케이블 다시 감기',basis:'해설 ⑥',demolition:true,excludes:{b1n7:true},choices:[none('해당 없음'),choice('c1','철거 케이블을 풀어서 다시 감기 (신설의 40%)',.4)]},
+      {id:'b1n7',name:'작업 구분',basis:'해설 ⑦',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 50%',.5),choice('c2','철거 (재활용, 드럼에 감기) 90%',.9)]}
+    ]},
+    '4-1-6':{page:87,notes:['① 배전주 중성선 위치 포설 공정 · ③ 전력선 방호·활차·롤러·풀링로프 설치 포함','② 장력조정·금속부속품(고정클램프 포함) 설치는 별도 계상 · ④ 기계경비는 1-4 기준','⑤ OPNW 절연튜브는 병행설치 시 10m당 광케이블설치사·보통인부 각 0.14인, 단독설치 시 그 120% — 별도 행으로 계상'],groups:()=>[
+      {id:'b1n6',name:'작업 구분',basis:'해설 ⑥',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 50%',.5),choice('c2','철거 (재사용) 80%',.8)]}
+    ]},
+    '4-1-7':{page:87,notes:['① 장비 반입구에서 직선 20m 초과 운반은 1-1-17 적용','② 지세별 할증은 공통 할증 1-2-2-1에서 선택, 안전시설은 1-1-27-1 적용','③ 맨홀 내 양수작업 별도 계상'],groups:t=>[
+      /방수장치/.test(t)&&countGroup('b1n4','동일 장소 설치 수','해설 ④',{min:1,step:1,unit:'개',perUnit:true,factor:sequence,hint:'수량은 전체 개수입니다. 동일 장소에 1개 추가마다 80% 가산(2개 180%, 3개 260%).'}),
+      {id:'b1n5',name:'작업 구분',basis:'해설 ⑤',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 50%',.5),choice('c2','철거 (재사용) 80%',.8)]}
+    ]},
     '4-2-1':{page:88,notes:[
       '① 터파기·되메우기·관로설치·트로프 설치는 별도',
       '③ PE 내관·견인선 포설은 4-1-1 적용',
@@ -289,7 +354,7 @@
       }
       applied.push({group:g.id,name:c.name,factor:c.factor,basis:g.basis});factor*=c.factor;
     }
-    const chosen=id=>{const v=values[id];return v==null||v===''||v==='none'?null:v;};
+    const chosen=id=>{const v=values[id],g=groups.find(x=>x.id===id);return v==null||v===''||v==='none'||(g?.type==='count'&&Number(v)===g.min)?null:v;};
     for(const g of groups)for(const [other,ids] of Object.entries(g.excludes||{})){
       const o=groups.find(x=>x.id===other);
       if(!o||chosen(g.id)==null||chosen(other)==null||(ids!==true&&!ids.includes(chosen(other))))continue;

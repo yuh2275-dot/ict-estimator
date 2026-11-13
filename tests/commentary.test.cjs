@@ -210,3 +210,33 @@ test('trade-specific commentary factors reach the Excel unit-price formulas',asy
   assert.ok(formulas.includes('0.94*1.1'),formulas.join(' | '));assert.ok(formulas.includes('1.41*1.265'),formulas.join(' | '));
   require('../src/xlsx.js');await assert.rejects(globalThis.ExcelIO.write(null,s,r),/직종별 해설 조건/);   // 구 빈 양식은 행마다 계수 하나뿐
 });
+test('4-1-2-1~4-1-4, 4-1-6, 4-1-7 manual commentary follows the printed rates per row',()=>{
+  const V=require('../src/standards-verified.js'),row=(code,re)=>V.find(s=>s.code===code&&re.test(s.spec));
+  const f=(s,c)=>S.commentaryFactors(s,{commentary:c}).factor;
+  // 4-1-2-1: 분기마다 30% 가산, 해체·조립 70%, 함체 없는 분기접속 149%
+  const closure=row('4-1-2-1',/광접속함체/),splice=row('4-1-2-1',/일반접속 12코어/),cut=row('4-1-2-1',/절체접속 12코어/);
+  assert.equal(S.commentary(closure).extracted,false);
+  close(f(closure,{b1n4:'c1'}),1.3);close(f(closure,{branches:2}),1.6);close(f(closure,{branches:0}),1);close(f(closure,{b1n4:'c2',branches:1}),.7*1.3);
+  assert.throws(()=>f(closure,{b1n4:'c1',branches:2}),/함께 선택할 수 없습니다/);
+  assert.equal(S.commentaryFactors(closure,{commentary:{b1n16:'c2'}}).demolition,true);
+  close(f(splice,{b1n12:'c1',b1n6:'c1'}),1.49*1.2);
+  assert.deepEqual(S.commentary(cut).groups.map(g=>g.id),['b1n6']);
+  // 4-1-2-2: 동일장소 수열, OTP 옥내 80%, 광분배기 분배 수
+  const otp=row('4-1-2-2',/광단자함/),splitter=row('4-1-2-2',/광분배기/),ofd=row('4-1-2-2',/광분배함/);
+  close(f(otp,{b1n3:2}),.9);close(f(otp,{b1n6:'c1'}),.8);close(f(otp,{b1n6:'c2',ijpBranches:2}),.8*1.6);close(f(ofd,{b1n1:'c1'}),.3);
+  for(const [n,x] of [[4,1],[8,1.6],[12,2.2],[16,2.8],[32,5.2]])close(f(splitter,{b1n9:n}),x);
+  // 4-1-3: 기축·리모델링은 포설 200%, 성단·시험 130% (같은 선택 id)
+  const cable24=row('4-1-3',/광섬유케이블 포설 24/),term=row('4-1-3',/^성단$/),air=row('4-1-3',/공압포설.*4코어/),slim=row('4-1-3',/슬림형/);
+  close(f(cable24,{b1n1:'c1'}),2);close(f(term,{b1n1:'c1'}),1.3);
+  close(f(cable24,{b1n2:'c2'}),1.2);close(f(cable24,{b1n2:'c1'}),1.5);close(f(air,{b1n5:'c2'}),1.19);close(f(air,{b1n5:'c1'}),1.37);
+  for(const [n,x] of [[1,1],[2,1.8],[3,2.6]])close(f(slim,{b1n13:n}),x);
+  assert.throws(()=>f(cable24,{b1n3:'c1',b1n4:'c1'}),/함께 선택할 수 없습니다/);
+  assert.deepEqual(S.commentary(row('4-1-3',/광인출구/)).groups,[]);
+  // 4-1-4: 8자포설은 보통인부에만
+  const composite=row('4-1-4',/지중포설 단면적 35/);
+  const a=S.combined(composite,{adjustment:'base',commentary:{b1n2:'c1',b1n4:'c1'}});
+  close(a.laborFactor,1.15);assert.deepEqual(a.tradeFactors,{보통인부:1.15});
+  assert.deepEqual(S.commentary(row('4-1-4',/가공포설 단면적 35/)).groups.map(g=>g.id),['b1n2','b1n6','b1n7']);
+  // 4-1-6, 4-1-7
+  close(f(row('4-1-6',/95/),{b1n6:'c2'}),.8);close(f(row('4-1-7',/방수장치/),{b1n4:3}),2.6/3);
+});
