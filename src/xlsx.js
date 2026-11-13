@@ -42,6 +42,7 @@
   }
   const rateCells=['D9','D11','D12','D13','D14','D15','D16','D17','D18','D19','D22','D23','D25'];
   async function write(template,state,result){
+    if(result.consumables?.enabled)throw Error('잡재료 일괄 계상은 공사원가계산의 설계내역서 Excel 저장을 사용하세요. 기존 빈 양식은 선택 자재 기준금액을 연결할 수 없습니다.');
     if(result.errors.length) throw Error('검토 항목을 먼저 해결하세요.');
     if(result.expenseRows?.length)throw Error('기계·기타경비가 포함된 작업은 공사원가계산의 엑셀 저장을 사용하세요.');
     if(result.labor.some(row=>row.adjustment.wageFactor!==1))throw Error('행별 노임 할증은 공사원가계산의 엑셀 저장을 사용하세요. 기존 빈 양식은 직종당 하나의 노임만 지원합니다.');
@@ -124,3 +125,4 @@
   }
   root.ExcelIO={open,write,patch,rateCells};
 })(globalThis);
+

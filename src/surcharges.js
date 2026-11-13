@@ -76,6 +76,21 @@
   const countGroup=(id,name,basis,options)=>({id,name,basis,type:'count',...options});
   const sequence=n=>(10+8*(n-1))/10;
   const commentaryRules={
+    // 4-4-1은 인쇄 93쪽 이미지 대조. 이전 자동 추출 id를 유지해 저장된 작업도 그대로 계산한다.
+    '4-4-1':{page:93,notes:[
+      '① 동일 Level 100m 이내 드럼 소운반·드럼대 설치·해체, 케이블 부설, 정돈·청소, 단자처리·결선·표찰 포함',
+      '② PVC 및 비닐절연외장 제어케이블에 적용',
+      '③ 전선관·랙·덕트·트레이·Pit·공동구·새들을 이용한 포설 기준',
+      '④ 직매부설의 굴착은 별도 계상',
+      '⑥ 1.5㎟ 미만은 1.5㎟ 기준, 10㎟ 초과는 4-6-1 통신용 구내 전력케이블 적용',
+      '⑦ 가요성 금속피 케이블의 앵커볼트 설치는 별도 계상'
+    ],groups:()=>[
+      {id:'b1n4',name:'포설 방식',basis:'해설 ④',choices:[none('전선관·랙·덕트·트레이 등'),choice('c1','직매부설 80% (굴착 별도)',.8)]},
+      {id:'b1n5',name:'실드 여부',basis:'해설 ⑤',choices:[none('일반 케이블'),choice('c1','실드케이블 120%',1.2)]},
+      {id:'b1n7',name:'금속피 여부',basis:'해설 ⑦',choices:[none('일반 외피'),choice('c1','가요성 금속피 (알루미늄·스틸) 150%',1.5)]},
+      countGroup('b1n8','동시포설 열 수','해설 ⑧',{min:1,step:1,unit:'열',perUnit:true,factor:sequence,hint:'수량은 케이블 총길이(m)입니다. 2열 180% · 3열 260% · 4열 340%, 이후 1열당 80% 가산. 예: 경로 100m × 4열 → 수량 400m, 총길이 기준 계수 3.4÷4 = 0.85.'}),
+      {id:'b1n9',name:'작업 구분',basis:'해설 ⑨',demolition:true,choices:[none('신설'),choice('c1','철거 (불용) 50%',.5),choice('c2','철거 (재사용) 90%',.9)]}
+    ]},
     '4-3-1':{page:90,notes:['① 몰딩 설치는 3-5-3 몰딩(Molding) 적용','④ 성단은 4-3-3 별도 계상','⑨ 철가 및 케이블 포설포박은 5-1-1 기초설치(공통) 적용','⑪ 신호수·안전시설은 1-1-27-1 안전시설 적용'],groups:t=>[
       /구내/.test(t)&&{id:'place',name:'설치 장소',basis:'해설 ①',choices:[none('관로 및 Pit (기본)'),choice('tray','벽잠핑·플로어덕트·케이블 트레이·랙 120%',1.2),choice('floor','바닥 노출 80%',.8)]},
       /(^|[^0-9])100P/.test(t)&&countGroup('pairs','UTP·STP·FTP 실제 대수 (P)','해설 ②',{min:100,step:100,unit:'P',factor:n=>{if(n%100)throw Error('대수는 100P 단위로 입력하세요.');return sequence(n/100);},hint:'200P 180% · 300P 260% · 400P 340% · 400P 초과는 100P당 80% 가산'}),
@@ -231,3 +246,4 @@
   root.Surcharges={groups,items,resolve,combined,parallel,supportsParallel,commentary,commentaryFactors,customWarnings};
   if(typeof module!=='undefined')module.exports=root.Surcharges;
 })(globalThis);
+
